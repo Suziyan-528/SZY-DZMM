@@ -52,4 +52,6 @@
 		button::before{
 			opacity: 0;
 		}
-		
+
+		button:hover::before{opacity:1;}
+		button:active::after{opacity:0;}
