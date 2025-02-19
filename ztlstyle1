@@ -1,0 +1,24 @@
+.status-bar {
+    background: #000;
+    color: white;
+    padding: 10px;
+    border: 2px solid;
+    border-radius: 5px;
+    position: relative;
+    animation: rainbow-glow 3s linear infinite;
+}
+
+@keyframes rainbow-glow {
+    0% { border-color: #ff0000; box-shadow: 0 0 15px #ff0000; }
+    16% { border-color: #ff8000; box-shadow: 0 0 15px #ff8000; }
+    32% { border-color: #ffff00; box-shadow: 0 0 15px #ffff00; }
+    48% { border-color: #00ff00; box-shadow: 0 0 15px #00ff00; }
+    64% { border-color: #00ffff; box-shadow: 0 0 15px #00ffff; }
+    80% { border-color: #8000ff; box-shadow: 0 0 15px #8000ff; }
+    100% { border-color: #ff0080; box-shadow: 0 0 15px #ff0080; }
+}
+
+.status-bar span {
+    margin: 0 15px;
+    font-family: Arial, sans-serif;
+}
