@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         电子猫猫本地黑名单
+// @name         电子猫猫小黑屋
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
 // @version      2.2
 // @description  精准屏蔽你想要屏蔽的内容，适配电子猫猫所有域名，本脚本在github免费开源，有问题可以tg找我
