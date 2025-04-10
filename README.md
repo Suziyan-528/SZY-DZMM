@@ -11,7 +11,7 @@
 一、自行下载能加载油猴插件的浏览器   
 二、下载油猴插件（https://www.tampermonkey.net ）然后安装   
 三、加载脚本   
-一键安装链接：[点击一键安装](https://raw.githubusercontent.com/Suziyan-528/SZY-DZMM/blob/main/电子猫猫本地黑名单/小黑屋.user.js)   
+一键安装链接：[点击一键安装](https://github.com/Suziyan-528/SZY-DZMM/raw/refs/heads/main/%E7%94%B5%E5%AD%90%E7%8C%AB%E7%8C%AB%E6%9C%AC%E5%9C%B0%E9%BB%91%E5%90%8D%E5%8D%95/%E5%B0%8F%E9%BB%91%E5%B1%8B.user.js)   
 手动安装：  
 1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V2.3)   
 2.点击已经安装好的油猴插件，然后选择添加脚本   
