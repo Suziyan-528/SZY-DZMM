@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫小黑屋
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
+// @updateURL    https://github。com/Suziyan-528/SZY-DZMM/releases/download/latest/电子猫猫小黑屋.user.js
 // @version      2.2
 // @description  精准屏蔽你想要屏蔽的内容，适配电子猫猫所有域名，本脚本在github免费开源，有问题可以tg找我
 // @author       苏子言
