@@ -13,9 +13,9 @@ tips：这是一个脚本！需要用到一些能加载插件的浏览器，电�
 
 使用方法：
 
-一、自行下载能加载油猴插件（https://www.tampermonkey.net/）的浏览器
+一、自行下载能加载油猴插件的浏览器
 
-二、下载油猴插件（https://www.tampermonkey.net/）然后安装
+二、下载油猴插件（https://www.tampermonkey.net ）然后安装
 
 三、加载脚本
 
