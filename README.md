@@ -11,7 +11,7 @@
 一、自行下载能加载油猴插件的浏览器   
 二、下载油猴插件（https://www.tampermonkey.net ）然后安装   
 三、加载脚本   
-一键安装链接：[点击一键安装](https://github.com/Suziyan-528/SZY-DZMM/raw/refs/heads/main/%E7%94%B5%E5%AD%90%E7%8C%AB%E7%8C%AB%E6%9C%AC%E5%9C%B0%E9%BB%91%E5%90%8D%E5%8D%95/%E5%B0%8F%E9%BB%91%E5%B1%8B.user.js)   
+一键安装链接：[点击一键安装](https://github.com/Suziyan-528/SZY-DZMM/raw/refs/heads/main/%E7%94%B5%E5%AD%90%E7%8C%AB%E7%8C%AB%E6%9C%AC%E5%9C%B0%E9%BB%91%E5%90%8D%E5%8D%95/%E5%B0%8F%E9%BB%91%E5%B1%8B%E4%B8%93%E4%B8%9A%E7%89%88.user.js)   
 手动安装：  
 1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.5)   
 2.点击已经安装好的油猴插件，然后选择添加脚本   
@@ -22,9 +22,11 @@
 
 **脚本方法**：
 一、安装好以后，选择编辑脚本   
-二、查看用户配置区   
+二、查看用户配置区 
+旧版本：
 【关键词类目】：1.作者："item-author"   2.标题："item-title-scope"   3.简介："item-des"  可以根据自己的需要修改，修改下面中括号里的内容   
 TARGET_CLASS: ["item-author","item-title-scope","item-des"],
 【屏蔽关键词】：例如作者名、标题、简介内容，每个关键词都需要打上""（英文双引号），然后再用英文,（逗号）隔开，问号填的内容就是您想要屏蔽的内容，例如："苏子言"      
 KEYWORDS: ["？",],
+新版本：直接通过桌面端通过快捷键 “Ctrl + Shift + a”，移动端点击悬浮按钮 “🛡️”，就能呼出可视化面板，直接操作即可
 三、点击保存，然后回到电子猫猫的页面，注意：更新了脚本内容以后，需要刷新一次网页才有用。
