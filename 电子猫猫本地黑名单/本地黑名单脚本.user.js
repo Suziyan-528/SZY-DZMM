@@ -31,8 +31,8 @@ function validateParent(element) {
 const parent = element.closest(CONFIG.PARENT_SELECTOR);
 if (!parent) return null;
 const hasValidStructure =
-parent.querySelector(".item-img-box") &&
-parent.querySelector(".item-img-inf");
+parent。querySelector(".item-img-box") &&
+parent。querySelector(".item-img-inf");
 return hasValidStructure ? parent : null;}
 function hideContent() {
 document.querySelectorAll(`.${CONFIG.TARGET_CLASS}`).forEach(element => {
