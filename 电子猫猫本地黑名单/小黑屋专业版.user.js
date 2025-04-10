@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         电子猫猫智能内容小黑屋-专业稳定版
+// @name         电子猫猫智能拦截小黑屋-专业稳定版
 // @namespace    https://github.com/yourname
-// @version      5.5
-// @description  支持多维分类、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
+// @version      5.6
+// @description  支持多维分类、可视化管理的智能内容过滤工具
 // @author       苏子言
 // @match        *://*.sexyai.top/*
 // @match        *://*.meimoai*.com/*
@@ -58,24 +58,37 @@
             this.initPanel();
             this.bindGlobalEvents();
             this.initMobileButton(); // 新增移动端按钮
+            this.executeShielding();
         }
 
         initManager() {
             const managers = {};
             Object.entries(CONFIG.CATEGORIES).forEach(([key, cfg]) => {
-                managers[key] = {
-                    ...cfg,
-                    data: new Set(JSON.parse(GM_getValue(cfg.storageKey, '[]')))
-                };
+                try {
+                    managers[key] = {
+                        ...cfg,
+                        data: new Set(JSON.parse(GM_getValue(cfg.storageKey, '[]')))
+                    };
+                } catch (error) {
+                    console.error(`读取 ${cfg.storageKey} 数据时出错:`, error);
+                    managers[key] = {
+                        ...cfg,
+                        data: new Set()
+                    };
+                }
             });
             return managers;
         }
 
         saveData(key) {
-            GM_setValue(
-                CONFIG.CATEGORIES[key].storageKey,
-                JSON.stringify([...this.manager[key].data])
-            );
+            try {
+                GM_setValue(
+                    CONFIG.CATEGORIES[key].storageKey,
+                    JSON.stringify([...this.manager[key].data])
+                );
+            } catch (error) {
+                console.error(`保存 ${CONFIG.CATEGORIES[key].storageKey} 数据时出错:`, error);
+            }
         }
 
         /* ========== 面板系统 ========== */
@@ -268,7 +281,11 @@
                 userSelect: 'none'
             });
 
-            document.body.appendChild(this.mobileTrigger);
+            try {
+                document.body.appendChild(this.mobileTrigger);
+            } catch (error) {
+                console.error('添加悬浮按钮到 body 时出错:', error);
+            }
         }
 
         togglePanel() {
@@ -489,7 +506,7 @@
 
     function init() {
         if (initialized || document.readyState !== 'complete') return;
-        new ShieldSystem().executeShielding();
+        new ShieldSystem();
         initialized = true;
     }
 
@@ -497,4 +514,4 @@
     document.addEventListener('DOMContentLoaded', init);
     setTimeout(init, 2000);
 
-})();
+})();    
