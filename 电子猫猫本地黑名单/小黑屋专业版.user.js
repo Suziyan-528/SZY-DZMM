@@ -1,11 +1,18 @@
 // ==UserScript==
-// @name         电子猫猫智能拦截小黑屋-专业稳定版
-// @namespace    https://github.com/yourname
-// @version      5.6
-// @description  支持多维分类、可视化管理的智能内容过滤工具
+// @name         电子猫猫智能屏蔽小黑屋-专业稳定版
+// @namespace    https://github.com/Suziyan-528/SZY-DZMM
+// @version      5.5.2
+// @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.sexyai.top/*
 // @match        *://*.meimoai*.com/*
+// @match        *://m.sexyai.top/*
+// @match        *://m.meimoai*.com/*
+// @match        *://mobile.sexyai.top/*
+// @match        *://mobile.meimoai*.com/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @connect      sexyai.top
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
@@ -17,26 +24,27 @@
 
 (function() {
     'use strict';
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     /* ==================== 用户配置区域 ==================== */
     const CONFIG = {
         // 分类配置 (可自由增减)
         CATEGORIES: {
             author: {
                 selector: '.item-author',
-                storageKey: 'AUTHOR_KEYS',
+                storageKey: 'GLOBAL_AUTHOR_KEYS',
                 label: '👤 作者屏蔽',
                 matchType: 'exact'
             },
             title: {
-                selector: '.item-title-scope',
-                storageKey: 'TITLE_KEYS',
+                selector:  '.item-title-scope',
+                storageKey: 'GLOBAL_TITLE_KEYS',
                 label: '📌 标题屏蔽',
                 matchType: 'fuzzy'
             },
             description: {
                 selector: '.item-des',
-                storageKey: 'DESC_KEYS',
+                storageKey: 'GLOBAL_DESC_KEYS',
                 label: '📝 简介屏蔽',
                 matchType: 'regex'
             }
@@ -57,38 +65,58 @@
             this.isPanelOpen = false;
             this.initPanel();
             this.bindGlobalEvents();
-            this.initMobileButton(); // 新增移动端按钮
-            this.executeShielding();
+            /*this.initMobileButton();*/
+                    if (isMobile) {
+            this.createMobileTrigger();
+        }
+            // 新增移动端按钮*/
+          
         }
 
+          // 新增：创建移动端触发按钮（极简版）
+    createMobileTrigger() {
+        const trigger = document.createElement('div');
+        trigger.id = 'shield-mobile-trigger';
+        trigger.textContent = '🛡️'; // 盾牌图标
+        trigger.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0);
+            color: white;
+            border-radius: 50%;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: ${CONFIG.Z_INDEX - 1};
+            user-select: none;
+        `;
+        trigger.addEventListener('click', () => this.togglePanel()); // 点击直接触发面板切换
+        document.body.appendChild(trigger);
+    }
+      
+      
         initManager() {
             const managers = {};
             Object.entries(CONFIG.CATEGORIES).forEach(([key, cfg]) => {
-                try {
-                    managers[key] = {
-                        ...cfg,
-                        data: new Set(JSON.parse(GM_getValue(cfg.storageKey, '[]')))
-                    };
-                } catch (error) {
-                    console.error(`读取 ${cfg.storageKey} 数据时出错:`, error);
-                    managers[key] = {
-                        ...cfg,
-                        data: new Set()
-                    };
-                }
+                managers[key] = {
+                    ...cfg,
+                    data: new Set(JSON.parse(GM_getValue(cfg.storageKey, '[]')))
+                };
             });
             return managers;
         }
 
         saveData(key) {
-            try {
-                GM_setValue(
-                    CONFIG.CATEGORIES[key].storageKey,
-                    JSON.stringify([...this.manager[key].data])
-                );
-            } catch (error) {
-                console.error(`保存 ${CONFIG.CATEGORIES[key].storageKey} 数据时出错:`, error);
-            }
+            GM_setValue(
+                CONFIG.CATEGORIES[key].storageKey,
+                JSON.stringify([...this.manager[key].data])
+            );
         }
 
         /* ========== 面板系统 ========== */
@@ -179,7 +207,7 @@
                     padding: 4px;
                 }
             `);
-            GM_addStyle(`
+         /*   GM_addStyle(`
                 #smart-shield-panel {
                     ${isMobile ? `
                         width: 90% !important;
@@ -202,7 +230,7 @@
                         right: 2.5% !important;
                     }
                 }
-            `);
+            `);*/
         }
 
         bindGlobalEvents() {
@@ -235,7 +263,7 @@
             });
 
             // 移动端触摸事件
-            if (isMobile) {
+           /* if (isMobile) {
                 let touchStartTime = 0;
                 this.mobileTrigger.addEventListener('touchstart', e => {
                     touchStartTime = Date.now();
@@ -247,7 +275,7 @@
                     }
                     e.preventDefault();
                 });
-            }
+            } */
 
             // 动态内容监听
             new MutationObserver(() => this.executeShielding())
@@ -255,7 +283,7 @@
         }
 
         /* ========== 移动端适配 ========== */
-        initMobileButton() {
+       /* initMobileButton() {
             if (!isMobile) return;
 
             // 悬浮触发按钮
@@ -281,25 +309,21 @@
                 userSelect: 'none'
             });
 
-            try {
-                document.body.appendChild(this.mobileTrigger);
-            } catch (error) {
-                console.error('添加悬浮按钮到 body 时出错:', error);
-            }
-        }
+            document.body.appendChild(this.mobileTrigger);
+        } */
 
         togglePanel() {
             this.isPanelOpen = !this.isPanelOpen;
             this.panel.style.display = this.isPanelOpen ? 'block' : 'none';
 
-            // 移动端动画
+            /*// 移动端动画
             if (isMobile && this.isPanelOpen) {
                 this.panel.style.transform = 'translateY(20px)';
                 setTimeout(() => {
                     this.panel.style.transform = 'translateY(0)';
                     this.panel.style.transition = 'transform 0.3s ease';
                 }, 10);
-            }
+            }*/
         }
 
         buildPanelUI() {
@@ -348,6 +372,7 @@
 
         createContentPanel(key, cfg, isVisible) {
             const panel = document.createElement('div');
+            panel.dataset.key = key;
             panel.style.display = isVisible ? 'block' : 'none';
             panel.className = 'content-panel';
 
@@ -391,26 +416,33 @@
 
         /* ========== 核心功能 ========== */
         executeShielding(force = false) {
-            Object.entries(this.manager).forEach(([key, cfg]) => {
-                document.querySelectorAll(cfg.selector).forEach(el => {
-                    if (this.processed.has(el) && !force) return;
+             // 重置所有可能被隐藏的元素
+    document.querySelectorAll(CONFIG.PARENT_SELECTOR).forEach(parent => {
+        parent.style.removeProperty('display');
+    });
+    this.processed = new WeakSet(); // 清空处理记录
 
-                    const content = el.textContent.trim();
-                    const shouldBlock = [...cfg.data].some(word => {
-                        switch(cfg.matchType) {
-                            case 'exact': return content === word;
-                            case 'fuzzy': return content.toLowerCase().includes(word.toLowerCase());
-                            case 'regex': return new RegExp(word, 'i').test(content);
-                        }
-                    });
+    // 重新执行屏蔽
+    Object.entries(this.manager).forEach(([key, cfg]) => {
+        document.querySelectorAll(cfg.selector).forEach(el => {
+            if (this.processed.has(el) && !force) return;
 
-                    if (shouldBlock) {
-                        const parent = el.closest(CONFIG.PARENT_SELECTOR);
-                        parent?.style.setProperty('display', 'none', 'important');
-                        this.processed.add(el);
-                    }
-                });
+            const content = el.textContent.trim();
+            const shouldBlock = [...cfg.data].some(word => {
+                switch(cfg.matchType) {
+                    case 'exact': return content === word;
+                    case 'fuzzy': return content.toLowerCase().includes(word.toLowerCase());
+                    case 'regex': return new RegExp(word, 'i').test(content);
+                }
             });
+
+            if (shouldBlock) {
+                const parent = el.closest(CONFIG.PARENT_SELECTOR);
+                parent?.style.setProperty('display', 'none', 'important');
+                this.processed.add(el);
+            }
+        });
+    });
         }
 
         /* ========== 数据管理 ========== */
@@ -422,7 +454,10 @@
                 span.textContent = word;
                 const button = document.createElement('button');
                 button.textContent = '×';
-                button.addEventListener('click', () => this.handleRemove(key, word));
+                button.addEventListener('click', (e) => {
+    e.stopPropagation(); // 阻止事件冒泡
+    this.handleRemove(key, word);
+});
                 li.appendChild(span);
                 li.appendChild(button);
                 list.appendChild(li);
@@ -441,11 +476,13 @@
         }
 
         handleRemove(key, word) {
-            this.manager[key].data.delete(word);
-            this.saveData(key);
-            const list = document.querySelector(`.content-panel[data-key="${key}"] .shield-list`);
-            this.refreshList(key, list);
-            this.executeShielding(true);
+             this.manager[key].data.delete(word);
+    this.saveData(key);
+    const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`); // 精准定位列表
+    this.refreshList(key, list);
+    this.executeShielding(true);
+    this.isPanelOpen = true; // 强制保持面板开启状态
+    this.panel.style.display = 'block'; // 显式维持显示
         }
 
         buildImportExport() {
@@ -506,7 +543,7 @@
 
     function init() {
         if (initialized || document.readyState !== 'complete') return;
-        new ShieldSystem();
+        new ShieldSystem().executeShielding();
         initialized = true;
     }
 
@@ -514,4 +551,4 @@
     document.addEventListener('DOMContentLoaded', init);
     setTimeout(init, 2000);
 
-})();    
+})();
