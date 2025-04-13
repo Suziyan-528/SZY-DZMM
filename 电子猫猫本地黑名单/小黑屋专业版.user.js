@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         电子猫猫智能屏蔽小黑屋-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.5.2
+// @version      5.5.3
 // @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
+// @match        *://*/*
 // @match        *://*.sexyai.top/*
 // @match        *://*.meimoai*.com/*
 // @match        *://m.sexyai.top/*
@@ -26,6 +27,11 @@
     'use strict';
      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/sexyai.top 及其子域名
+    if (!domainPattern.test(location.hostname)) {
+        console.log('[屏蔽系统] 非目标域名，退出执行');
+        return;
+    }
     /* ==================== 用户配置区域 ==================== */
     const CONFIG = {
         // 分类配置 (可自由增减)
