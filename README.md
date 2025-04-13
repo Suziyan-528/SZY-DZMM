@@ -13,7 +13,7 @@
 三、加载脚本   
 一键安装链接：[点击一键安装](https://raw.githubusercontent.com/Suziyan-528/SZY-DZMM/refs/heads/main/电子猫猫本地黑名单/小黑屋专业版.user.js)   
 手动安装：  
-1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.5)   
+1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.5.2)   
 2.点击已经安装好的油猴插件，然后选择添加脚本   
 3.选择右上角的实用工具-导入文件   
 4.导入你提前下载好的文件，注意文件后缀是.user.js   
