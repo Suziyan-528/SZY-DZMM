@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能屏蔽小黑屋-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.5.1
+// @version      5.5.2
 // @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.sexyai.top/*
