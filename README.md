@@ -13,7 +13,7 @@
 三、加载脚本   
 一键安装链接：[点击一键安装](https://raw.githubusercontent.com/Suziyan-528/SZY-DZMM/refs/heads/main/电子猫猫本地黑名单/小黑屋专业版.user.js)   
 手动安装：  
-1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.5.2)   
+1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.5.3)   
 2.点击已经安装好的油猴插件，然后选择添加脚本   
 3.选择右上角的实用工具-导入文件   
 4.导入你提前下载好的文件，注意文件后缀是.user.js   
@@ -28,5 +28,5 @@
 TARGET_CLASS: ["item-author","item-title-scope","item-des"]，    
 【屏蔽关键词】：例如作者名、标题、简介内容，每个关键词都需要打上""（英文双引号），然后再用英文,（逗号）隔开，问号填的内容就是您想要屏蔽的内容，例如："苏子言"         
 KEYWORDS: ["？",]，    
-**新版本（V5.5.2）**：桌面端通过快捷键 “Ctrl + Shift + a”，移动端点击悬浮按钮 “🛡️”，就能呼出可视化面板，直接操作即可   
+**新版本（V5.5.3）**：桌面端通过快捷键 “Ctrl + Shift + a”，移动端点击悬浮按钮 “🛡️”，就能呼出可视化面板，直接操作即可   
 三、点击保存，然后回到电子猫猫的页面，注意：更新了脚本内容以后，需要刷新一次网页才有用。   
