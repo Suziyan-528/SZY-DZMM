@@ -4,7 +4,7 @@
 // @version      5.5.3
 // @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
-// @match        *://*/*
+// @match        *://*.meimoai10.com/*
 // @match        *://*.sexyai.top/*
 // @match        *://*.meimoai*.com/*
 // @match        *://m.sexyai.top/*
