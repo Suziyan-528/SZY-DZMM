@@ -2,7 +2,7 @@
 // @name         电子猫猫电量修改器
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM/
 // @version      1.5
-// @description  一款用来修改自己电量的小玩具（纯没用，骗人而已）
+// @description  一款用来修改自己电量的小玩具（纯没用，骗人骗自己而已，用了出事不要找我）
 // @author       苏子言
 // @match        *://*.sexyai.top/*
 // @match        *://*.meimoai10.com/*
