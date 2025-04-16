@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能屏蔽小黑屋-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.5.3
+// @version      V5.5.4
 // @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -11,6 +11,8 @@
 // @match        *://m.meimoai*.com/*
 // @match        *://mobile.sexyai.top/*
 // @match        *://mobile.meimoai*.com/*
+// @connect      github.com
+// @connect      api.github.com
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @connect      sexyai.top
@@ -18,122 +20,232 @@
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
 // @grant        unsafeWindow
 // @run-at       document-end
 // @license      MIT
 // ==/UserScript==
 
+// 立即执行函数，创建一个独立的作用域，避免全局变量污染
 (function() {
     'use strict';
-     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // 判断是否为移动端设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/sexyai.top 及其子域名
+    // 定义域名匹配模式，用于匹配目标域名
+    const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i;
+    // 检查当前页面的域名是否符合目标域名模式
     if (!domainPattern.test(location.hostname)) {
         console.log('[屏蔽系统] 非目标域名，退出执行');
         return;
     }
-    /* ==================== 用户配置区域 ==================== */
+
+    /* ========================== 自动更新模块 ========================== */
+    // 获取当前脚本版本（从元数据解析，需与@version一致）
+    const CURRENT_VERSION = 'V5.5.4';
+    const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
+    const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
+
+    // 检查更新逻辑
+    function checkForUpdates() {
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
+            headers: {
+                'User-Agent': 'Mozilla/5.0',
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            onload: (response) => {
+                try {
+                    const latest = JSON.parse(response.responseText);
+                    const latestVersion = latest.tag_name;
+
+                    // 版本号比较（支持x.y.z格式）
+                    if (isNewerVersion(latestVersion, CURRENT_VERSION)) {
+                        showUpdateNotification(latest);
+                    } else {
+                        console.log('[更新检查] 已是最新版本');
+                    }
+                } catch (error) {
+                    console.error('[更新检查] 失败', error);
+                }
+            },
+            onerror: () => console.error('[更新检查] 网络请求失败')
+        });
+    }
+
+    // 版本号比较函数
+    function isNewerVersion(latest, current) {
+        const l = latest.split('.').map(Number);
+        const c = current.split('.').map(Number);
+        for (let i = 0; i < 3; i++) {
+            if (l[i] > c[i]) return true;
+            if (l[i] < c[i]) return false;
+        }
+        return false;
+    }
+
+    // 显示更新通知UI
+    function showUpdateNotification(latest) {
+    // 清理旧更新条
+    const existingBar = document.getElementById('update-notification-bar');
+    if (existingBar) existingBar.remove();
+
+    const updateBar = document.createElement('div');
+    updateBar.id = 'update-notification-bar'; // 唯一标识
+    updateBar.style.cssText = `
+        padding: 12px;
+        background: #ffeb3b;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        text-align: center;
+    `;
+    updateBar.innerHTML = `
+        <strong>发现新版本 ${latest.tag_name}！</strong><br>
+        ${latest.body.split('\n').map(line => `<span>${line}</span>`).join('<br>')}<br>
+        <a href="${latest.html_url}" target="_blank" style="color: #007bff; text-decoration: underline;">立即更新</a>
+    `;
+
+    const panel = document.getElementById('smart-shield-panel');
+    if (panel) {
+        panel.insertBefore(updateBar, panel.firstChild);
+    }
+}
+
+
+    /* ========================== 用户配置区域 ========================== */
     const CONFIG = {
         // 分类配置 (可自由增减)
         CATEGORIES: {
             author: {
                 selector: '.item-author',
+                // 用于选择作者元素的 CSS 选择器
                 storageKey: 'GLOBAL_AUTHOR_KEYS',
+                // 存储作者屏蔽关键词的键名
                 label: '👤 作者屏蔽',
+                // 显示在 UI 上的标签
                 matchType: 'exact'
+                // 匹配类型为精确匹配
             },
             title: {
                 selector:  '.item-title-scope',
+                // 用于选择标题元素的 CSS 选择器
                 storageKey: 'GLOBAL_TITLE_KEYS',
+                // 存储标题屏蔽关键词的键名
                 label: '📌 标题屏蔽',
+                // 显示在 UI 上的标签
                 matchType: 'fuzzy'
+                // 匹配类型为模糊匹配
             },
             description: {
                 selector: '.item-des',
+                // 用于选择简介元素的 CSS 选择器
                 storageKey: 'GLOBAL_DESC_KEYS',
+                // 存储简介屏蔽关键词的键名
                 label: '📝 简介屏蔽',
+                // 显示在 UI 上的标签
                 matchType: 'regex'
+                // 匹配类型为正则表达式匹配
             }
         },
 
         // 高级配置
         PARENT_SELECTOR: 'uni-view.item',
+        // 父元素的 CSS 选择器，用于隐藏匹配元素的父元素
         HOTKEY: 'Ctrl+Shift+a',
+        // 打开屏蔽面板的快捷键
         Z_INDEX: 2147483647,
+        // 屏蔽面板的 z-index 值，确保面板显示在最上层
         DEBOUNCE: 300
+        // 防抖时间，暂未使用
     };
 
-    /* ==================== 核心系统 ==================== */
+    /* ========================== 核心系统 =========================== */
     class ShieldSystem {
         constructor() {
+            // 用于记录已经处理过的元素，避免重复处理
             this.processed = new WeakSet();
+            // 初始化管理器，加载存储的屏蔽关键词
             this.manager = this.initManager();
+            // 标记屏蔽面板是否打开
             this.isPanelOpen = false;
+            // 初始化屏蔽面板
             this.initPanel();
+            // 绑定全局事件，如快捷键监听、点击关闭等
             this.bindGlobalEvents();
-            /*this.initMobileButton();*/
-                    if (isMobile) {
-            this.createMobileTrigger();
-        }
-            // 新增移动端按钮*/
-          
+            // 如果是移动端，创建移动端触发按钮
+            if (isMobile) {
+                this.createMobileTrigger();
+            }
+            setTimeout(() => checkForUpdates(), 1000);
         }
 
-          // 新增：创建移动端触发按钮（极简版）
-    createMobileTrigger() {
-        const trigger = document.createElement('div');
-        trigger.id = 'shield-mobile-trigger';
-        trigger.textContent = '🛡️'; // 盾牌图标
-        trigger.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background: rgba(255,255,255,0);
-            color: white;
-            border-radius: 50%;
-            font-size: 24px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            cursor: pointer;
-            z-index: ${CONFIG.Z_INDEX - 1};
-            user-select: none;
-        `;
-        trigger.addEventListener('click', () => this.togglePanel()); // 点击直接触发面板切换
-        document.body.appendChild(trigger);
-    }
-      
-      
+        // 创建移动端触发按钮（极简版）
+        createMobileTrigger() {
+            const trigger = document.createElement('div');
+            trigger.id = 'shield-mobile-trigger';
+            trigger.textContent = '🛡️';
+            // 盾牌图标
+            // 设置按钮的样式
+            trigger.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                background: rgba(255,255,255,0);
+                color: white;
+                border-radius: 50%;
+                font-size: 24px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                cursor: pointer;
+                z-index: ${CONFIG.Z_INDEX - 1};
+                user-select: none;
+            `;
+            // 点击按钮时切换屏蔽面板的显示状态
+            trigger.addEventListener('click', () => this.togglePanel());
+            document.body.appendChild(trigger);
+        }
+
+        // 初始化管理器，加载存储的屏蔽关键词
         initManager() {
             const managers = {};
+            // 遍历分类配置
             Object.entries(CONFIG.CATEGORIES).forEach(([key, cfg]) => {
                 managers[key] = {
                     ...cfg,
+                    // 从存储中获取屏蔽关键词，并转换为 Set 集合
                     data: new Set(JSON.parse(GM_getValue(cfg.storageKey, '[]')))
                 };
             });
             return managers;
         }
 
+        // 保存屏蔽关键词到存储中
         saveData(key) {
             GM_setValue(
                 CONFIG.CATEGORIES[key].storageKey,
+                // 将 Set 集合转换为数组并转换为 JSON 字符串保存
                 JSON.stringify([...this.manager[key].data])
             );
         }
 
         /* ========== 面板系统 ========== */
+        // 初始化屏蔽面板
         initPanel() {
             this.panel = document.createElement('div');
             this.panel.id = 'smart-shield-panel';
+            // 应用面板样式
             this.applyPanelStyle();
+            // 构建面板 UI
             this.buildPanelUI();
             document.documentElement.appendChild(this.panel);
         }
 
+        // 应用面板样式
         applyPanelStyle() {
             GM_addStyle(`
                 #smart-shield-panel {
@@ -213,32 +325,9 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
                     padding: 4px;
                 }
             `);
-         /*   GM_addStyle(`
-                #smart-shield-panel {
-                    ${isMobile ? `
-                        width: 90% !important;
-                        right: 5% !important;
-                        top: 20px !important;
-                        max-height: 80vh;
-                        font-size: 14px;
-                    ` : `
-                        width: 320px !important;
-                        right: 20px !important;
-                        top: 80px !important;
-                    `}
-                }
-                .shield-input input {
-                    ${isMobile ? 'padding: 12px;' : ''}
-                }
-                @media (max-width: 600px) {
-                    #smart-shield-panel {
-                        width: 95% !important;
-                        right: 2.5% !important;
-                    }
-                }
-            `);*/
         }
 
+        // 绑定全局事件
         bindGlobalEvents() {
             // 快捷键监听
             const [modifier1, modifier2, key] = CONFIG.HOTKEY.split('+');
@@ -246,6 +335,7 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
                 const isModifier1 = modifier1 === 'Ctrl' ? e.ctrlKey : modifier1 === 'Shift' ? e.shiftKey : false;
                 const isModifier2 = modifier2 === 'Ctrl' ? e.ctrlKey : modifier2 === 'Shift' ? e.shiftKey : false;
                 if (isModifier1 && isModifier2 && e.key.toLowerCase() === key.toLowerCase()) {
+                    // 按下快捷键时切换屏蔽面板的显示状态
                     this.togglePanel();
                     e.preventDefault();
                     e.stopPropagation();
@@ -259,29 +349,16 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
                 const clickInside = panel.contains(e.target) ||
                     e.target.closest('#shield-mobile-trigger');
                 if (!clickInside) {
+                    // 点击面板外部时关闭屏蔽面板
                     this.togglePanel();
                 }
             });
 
             // 油猴菜单命令
             GM_registerMenuCommand(isMobile ? '显示屏蔽面板' : '打开屏蔽面板', () => {
+                // 点击油猴菜单命令时切换屏蔽面板的显示状态
                 this.togglePanel();
             });
-
-            // 移动端触摸事件
-           /* if (isMobile) {
-                let touchStartTime = 0;
-                this.mobileTrigger.addEventListener('touchstart', e => {
-                    touchStartTime = Date.now();
-                    e.preventDefault();
-                });
-                this.mobileTrigger.addEventListener('touchend', e => {
-                    if (Date.now() - touchStartTime < 500) {
-                        this.togglePanel();
-                    }
-                    e.preventDefault();
-                });
-            } */
 
             // 动态内容监听
             new MutationObserver(() => this.executeShielding())
@@ -289,50 +366,24 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
         }
 
         /* ========== 移动端适配 ========== */
-       /* initMobileButton() {
-            if (!isMobile) return;
-
-            // 悬浮触发按钮
-            this.mobileTrigger = document.createElement('div');
-            this.mobileTrigger.id = 'shield-mobile-trigger';
-            this.mobileTrigger.innerHTML = '🛡️';
-
-            Object.assign(this.mobileTrigger.style, {
-                position: 'fixed',
-                bottom: '20px',
-                right: '20px',
-                width: '50px',
-                height: '50px',
-                background: '#007bff',
-                color: 'white',
-                borderRadius: '50%',
-                fontSize: '24px',
-                textAlign: 'center',
-                lineHeight: '50px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                zIndex: CONFIG.Z_INDEX - 1,
-                cursor: 'pointer',
-                userSelect: 'none'
-            });
-
-            document.body.appendChild(this.mobileTrigger);
-        } */
-
+        // 切换屏蔽面板的显示状态
         togglePanel() {
             this.isPanelOpen = !this.isPanelOpen;
             this.panel.style.display = this.isPanelOpen ? 'block' : 'none';
-
-            /*// 移动端动画
-            if (isMobile && this.isPanelOpen) {
-                this.panel.style.transform = 'translateY(20px)';
-                setTimeout(() => {
-                    this.panel.style.transform = 'translateY(0)';
-                    this.panel.style.transition = 'transform 0.3s ease';
-                }, 10);
-            }*/
         }
 
+        // 构建面板 UI
         buildPanelUI() {
+
+             const versionInfo = document.createElement('div');
+    versionInfo.style.cssText = `
+        padding: 12px;
+        text-align: center;
+        font-size: 0.9em;
+        color: #666;
+    `;
+    versionInfo.textContent = `当前版本: ${CURRENT_VERSION} | tg@苏子言`;
+
             // 关闭按钮
             const closeBtn = document.createElement('button');
             closeBtn.className = 'panel-close';
@@ -366,9 +417,10 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
             const tools = this.buildImportExport();
 
             // 组装面板
-            this.panel.append(closeBtn, tabBar, contentArea, tools);
+            this.panel.append(versionInfo, closeBtn, tabBar, contentArea, tools);
         }
 
+        // 创建选项卡按钮
         createTabButton(label, isActive) {
             const btn = document.createElement('button');
             btn.textContent = label;
@@ -376,6 +428,7 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
             return btn;
         }
 
+        // 创建内容面板
         createContentPanel(key, cfg, isVisible) {
             const panel = document.createElement('div');
             panel.dataset.key = key;
@@ -404,6 +457,7 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
             return panel;
         }
 
+        // 切换选项卡
         switchTab(activeBtn, activePanel) {
             // 隐藏所有面板
             this.panel.querySelectorAll('.content-panel').forEach(p => {
@@ -421,37 +475,39 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
         }
 
         /* ========== 核心功能 ========== */
+        // 执行屏蔽操作
         executeShielding(force = false) {
-             // 重置所有可能被隐藏的元素
-    document.querySelectorAll(CONFIG.PARENT_SELECTOR).forEach(parent => {
-        parent.style.removeProperty('display');
-    });
-    this.processed = new WeakSet(); // 清空处理记录
-
-    // 重新执行屏蔽
-    Object.entries(this.manager).forEach(([key, cfg]) => {
-        document.querySelectorAll(cfg.selector).forEach(el => {
-            if (this.processed.has(el) && !force) return;
-
-            const content = el.textContent.trim();
-            const shouldBlock = [...cfg.data].some(word => {
-                switch(cfg.matchType) {
-                    case 'exact': return content === word;
-                    case 'fuzzy': return content.toLowerCase().includes(word.toLowerCase());
-                    case 'regex': return new RegExp(word, 'i').test(content);
-                }
+            // 重置所有可能被隐藏的元素
+            document.querySelectorAll(CONFIG.PARENT_SELECTOR).forEach(parent => {
+                parent.style.removeProperty('display');
             });
+            this.processed = new WeakSet(); // 清空处理记录
 
-            if (shouldBlock) {
-                const parent = el.closest(CONFIG.PARENT_SELECTOR);
-                parent?.style.setProperty('display', 'none', 'important');
-                this.processed.add(el);
-            }
-        });
-    });
+            // 重新执行屏蔽
+            Object.entries(this.manager).forEach(([key, cfg]) => {
+                document.querySelectorAll(cfg.selector).forEach(el => {
+                    if (this.processed.has(el) && !force) return;
+
+                    const content = el.textContent.trim();
+                    const shouldBlock = [...cfg.data].some(word => {
+                        switch(cfg.matchType) {
+                            case 'exact': return content === word;
+                            case 'fuzzy': return content.toLowerCase().includes(word.toLowerCase());
+                            case 'regex': return new RegExp(word, 'i').test(content);
+                        }
+                    });
+
+                    if (shouldBlock) {
+                        const parent = el.closest(CONFIG.PARENT_SELECTOR);
+                        parent?.style.setProperty('display', 'none', 'important');
+                        this.processed.add(el);
+                    }
+                });
+            });
         }
 
         /* ========== 数据管理 ========== */
+        // 刷新关键词列表
         refreshList(key, list) {
             list.innerHTML = '';
             this.manager[key].data.forEach(word => {
@@ -461,15 +517,16 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
                 const button = document.createElement('button');
                 button.textContent = '×';
                 button.addEventListener('click', (e) => {
-    e.stopPropagation(); // 阻止事件冒泡
-    this.handleRemove(key, word);
-});
+                    e.stopPropagation(); // 阻止事件冒泡
+                    this.handleRemove(key, word);
+                });
                 li.appendChild(span);
                 li.appendChild(button);
                 list.appendChild(li);
             });
         }
 
+        // 处理添加关键词
         handleAddKey(key, input) {
             const word = input.value.trim();
             if (!word) return;
@@ -481,16 +538,18 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
             this.executeShielding(true);
         }
 
+        // 处理移除关键词
         handleRemove(key, word) {
-             this.manager[key].data.delete(word);
-    this.saveData(key);
-    const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`); // 精准定位列表
-    this.refreshList(key, list);
-    this.executeShielding(true);
-    this.isPanelOpen = true; // 强制保持面板开启状态
-    this.panel.style.display = 'block'; // 显式维持显示
+            this.manager[key].data.delete(word);
+            this.saveData(key);
+            const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`); // 精准定位列表
+            this.refreshList(key, list);
+            this.executeShielding(true);
+            this.isPanelOpen = true; // 强制保持面板开启状态
+            this.panel.style.display = 'block'; // 显式维持显示
         }
 
+        // 构建导入导出工具
         buildImportExport() {
             const tools = document.createElement('div');
             tools.style.padding = '16px';
@@ -506,6 +565,7 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
             return tools;
         }
 
+        // 导出配置文件
         exportConfig() {
             const data = Object.entries(this.manager).reduce((acc, [key, cfg]) => {
                 acc[key] = [...cfg.data];
@@ -521,6 +581,7 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
             a.click();
         }
 
+        // 导入配置文件
         importConfig(input) {
             const file = input.files[0];
             if (!file) return;
@@ -546,15 +607,23 @@ const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i; // 匹配 meimoaiX.com/
 
     /* ==================== 初始化系统 ==================== */
     let initialized = false;
+    let updateTimer = null;
+function init() {
+    if (initialized || document.readyState !== 'complete') return;
 
-    function init() {
-        if (initialized || document.readyState !== 'complete') return;
-        new ShieldSystem().executeShielding();
-        initialized = true;
-    }
+    checkForUpdates();
+    if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
+    updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
 
+    new ShieldSystem().executeShielding();
+    initialized = true;
+}
+
+    // 监听页面加载完成事件
     window.addEventListener('load', init);
+    // 监听 DOM 内容加载完成事件
     document.addEventListener('DOMContentLoaded', init);
+    // 延迟 2 秒后尝试初始化
     setTimeout(init, 2000);
 
 })();
