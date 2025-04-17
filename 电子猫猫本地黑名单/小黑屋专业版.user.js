@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         电子猫猫智能屏蔽小黑屋-专业稳定版
+// @name         电子猫猫智能工具箱-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.5.5
-// @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
+// @version      5.6.1
+// @description  支持多维屏蔽、可视化UI管理的智能工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
 // @match        *://*.sexyai.top/*
@@ -40,7 +40,7 @@
 
     /* ========================== 自动更新模块 ========================== */
     // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.5.5';
+    const CURRENT_VERSION = '5.6.1';
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
 
@@ -114,6 +114,138 @@
         panel.insertBefore(updateBar, panel.firstChild);
     }
 }
+
+
+    /* ====================== 新功能：标签屏蔽系统 ====================== */
+    class TagShield {
+        constructor() {
+            // 配置存储键名
+            this.STORAGE_KEYS = {
+                authorTag: 'HIDE_AUTHOR_TAG',
+                usageTag: 'HIDE_USAGE_TAG'
+            };
+
+            // 初始化开关状态
+            this.state = {
+                hideAuthorTag: GM_getValue(this.STORAGE_KEYS.authorTag, false),
+                hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false)
+            };
+
+            // 如果已有面板则注入UI
+            if (document.getElementById('smart-shield-panel')) {
+                this.injectUI();
+            }
+        }
+
+        // 执行标签屏蔽
+        execute() {
+            this.toggleTag('.item-author', this.state.hideAuthorTag);
+            this.toggleTag('.item-usage', this.state.hideUsageTag);
+        }
+
+        // 通用标签显示/隐藏控制
+        toggleTag(selector, shouldHide) {
+            document.querySelectorAll(selector).forEach(el => {
+                if (shouldHide) {
+                    // 记录原始尺寸
+                    el.dataset.originalWidth = el.style.width || 'auto';
+                    el.dataset.originalHeight = el.style.height || 'auto';
+
+                    // 保持布局占位
+                    el.style.cssText += `
+                    visibility: hidden !important;
+                    opacity: 0 !important;
+                    width: ${el.offsetWidth}px !important;
+                    height: ${el.offsetHeight}px !important;
+                    flex: 0 0 auto !important;  // 防止flex压缩空间
+                    margin: 0 !important;         // 消除边距影响
+                `;
+                } else {
+                    // 恢复原始样式
+                    el.style.cssText = `
+                    visibility: visible;
+                    opacity: 1;
+                    width: ${el.dataset.originalWidth};
+                    height: ${el.dataset.originalHeight};
+                `;
+                }
+            });
+        }
+
+        // 新增样式注入
+        injectStyle() {
+            GM_addStyle(`
+            /* 为被隐藏元素添加占位保护 */
+            .item-usage[style*="hidden"], 
+            .item-author[style*="hidden"] {
+                pointer-events: none !important;
+                user-select: none !important;
+                position: relative !important;
+            }
+            
+            /* 添加伪元素占位提示 */
+            .item-usage[style*="hidden"]::after,
+            .item-author[style*="hidden"]::after {
+                content: "[已隐藏]";
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%,-50%);
+                font-size: 12px;
+                color: #999;
+                opacity: 0.6;
+            }
+        `);
+        }
+
+        execute() {
+            this.toggleTag('.item-author', this.state.hideAuthorTag);
+            this.toggleTag('.item-usage', this.state.hideUsageTag);
+            this.injectStyle(); // 注入样式
+        }
+
+
+
+        // 在原有面板中注入新UI
+        injectUI() {
+            const panel = document.getElementById('smart-shield-panel');
+
+            // 创建标签屏蔽区域
+            const container = document.createElement('div');
+            container.style.padding = '16px';
+            container.innerHTML = `
+                <div style="margin-bottom: 12px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                    🏷️ 标签屏蔽
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" ${this.state.hideAuthorTag ? 'checked' : ''} id="toggle-author-tag">
+                        <span>隐藏所有作者名称</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" ${this.state.hideUsageTag ? 'checked' : ''} id="toggle-usage-tag">
+                        <span>隐藏所有项目热度</span>
+                    </label>
+                </div>
+            `;
+
+            // 事件绑定
+            container.querySelector('#toggle-author-tag').addEventListener('change', (e) => {
+                this.state.hideAuthorTag = e.target.checked;
+                GM_setValue(this.STORAGE_KEYS.authorTag, e.target.checked);
+                this.execute();
+            });
+
+            container.querySelector('#toggle-usage-tag').addEventListener('change', (e) => {
+                this.state.hideUsageTag = e.target.checked;
+                GM_setValue(this.STORAGE_KEYS.usageTag, e.target.checked);
+                this.execute();
+            });
+
+            // 插入到版本信息下方
+            panel.insertBefore(container, panel.querySelector('.shield-tab'));
+        }
+    }
 
 
     /* ========================== 用户配置区域 ========================== */
@@ -193,6 +325,17 @@
                 this.createMobileTrigger();
             }
             setTimeout(() => checkForUpdates(), 1000);
+
+            // 新增：初始化标签屏蔽系统
+            this.tagShield = new TagShield();
+            // 修改执行屏蔽逻辑
+            this.originalExecuteShielding = this.executeShielding.bind(this);
+            this.executeShielding = (force = false) => {
+                this.originalExecuteShielding(force);
+                this.tagShield.execute(); // 执行新屏蔽逻辑
+            }
+            // 首次执行
+            this.tagShield.execute();
         }
 
         // 创建移动端触发按钮（极简版）
@@ -296,7 +439,7 @@
                     position: fixed !important;
                     top: 80px !important;
                     right: 20px !important;
-                    width: 320px !important;
+                    width: 360px !important;
                     background: #fff !important;
                     border-radius: 12px !important;
                     box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
@@ -420,13 +563,13 @@
         buildPanelUI() {
 
              const versionInfo = document.createElement('div');
-    versionInfo.style.cssText = `
-        padding: 12px;
-        text-align: center;
-        font-size: 0.9em;
-        color: #666;
-    `;
-    versionInfo.textContent = `当前版本: ${CURRENT_VERSION} | tg@苏子言`;
+                versionInfo.style.cssText = `
+                    padding: 12px;
+                    text-align: center;
+                    font-size: 1.1em;
+                    color: rbag(255,255,255,0.5);
+                `;
+    versionInfo.textContent = `电子猫猫工具箱${CURRENT_VERSION} | tg@苏子言`;
 
             // 关闭按钮
             const closeBtn = document.createElement('button');
