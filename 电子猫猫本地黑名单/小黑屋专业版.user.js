@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能屏蔽小黑屋-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.5.4
+// @version      5.6.0
 // @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -16,8 +16,6 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @connect      sexyai.top
-// @grant        GM_setValue
-// @grant        GM_getValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -42,7 +40,7 @@
 
     /* ========================== 自动更新模块 ========================== */
     // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.5.4';
+    const CURRENT_VERSION = '5.6.0';
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
 
@@ -70,27 +68,31 @@
                     console.error('[更新检查] 失败', error);
                 }
             },
-            onerror: () => console.error('[更新检查] 网络请求失败')
+            onerror: (response) => {
+                console.error('[更新检查] 网络请求失败，状态码:', response.status);
+            }
         });
     }
 
     // 版本号比较函数
     function isNewerVersion(latest, current) {
-    // 移除 "V" 前缀并分割
-    const l = latest.replace(/^V/i, '').split('.').map(Number);
-    const c = current.replace(/^V/i, '').split('.').map(Number);
-    for (let i = 0; i < 3; i++) {
-        if (l[i] > c[i]) return true;
-        if (l[i] < c[i]) return false;
+        // 移除 "V" 前缀并分割
+        const l = latest.replace(/^V/i, '').split('.').map(Number);
+        const c = current.replace(/^V/i, '').split('.').map(Number);
+        for (let i = 0; i < 3; i++) {
+            if (l[i] > c[i]) return true;
+            if (l[i] < c[i]) return false;
+        }
+        return false;
     }
-    return false;
-}
 
     // 显示更新通知UI
     function showUpdateNotification(latest) {
     // 清理旧更新条
-    const existingBar = document.getElementById('update-notification-bar');
-    if (existingBar) existingBar.remove();
+        const existingBar = document.getElementById('update-notification-bar');
+        if (existingBar) {
+            existingBar.remove();
+        }
 
     const updateBar = document.createElement('div');
     updateBar.id = 'update-notification-bar'; // 唯一标识
@@ -162,6 +164,18 @@
     };
 
     /* ========================== 核心系统 =========================== */
+    // 防抖函数，用于避免用户频繁操作触发保存数据
+    function debounce(func, delay) {
+        let timer;
+        return function() {
+            const context = this;
+            const args = arguments;
+            // 清除之前的定时器
+            clearTimeout(timer);
+            // 设置新的定时器，在指定延迟后执行函数
+            timer = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
     class ShieldSystem {
         constructor() {
             // 用于记录已经处理过的元素，避免重复处理
@@ -237,13 +251,42 @@
         /* ========== 面板系统 ========== */
         // 初始化屏蔽面板
         initPanel() {
+            // 创建一个 div 元素作为屏蔽面板
             this.panel = document.createElement('div');
+            // 为面板设置唯一的 id
             this.panel.id = 'smart-shield-panel';
-            // 应用面板样式
+            // 调用 applyPanelStyle 方法为面板应用样式
             this.applyPanelStyle();
-            // 构建面板 UI
+            // 调用 buildPanelUI 方法构建面板的用户界面
             this.buildPanelUI();
+            // 将面板添加到文档的根元素中
             document.documentElement.appendChild(this.panel);
+
+            // 获取面板中的输入框和添加按钮
+            const input = this.panel.querySelector('.shield-input input');
+            const addButton = this.panel.querySelector('.shield-input button');
+
+            // 创建防抖后的保存数据函数，使用 CONFIG.DEBOUNCE 作为防抖时间
+            const saveDataDebounced = debounce(this.saveData.bind(this), CONFIG.DEBOUNCE);
+
+            // 为添加按钮添加点击事件监听器
+            addButton.addEventListener('click', () => {
+                // 获取输入框中的关键词，并去除首尾空格
+                const keyword = input.value.trim();
+                if (keyword) {
+                    // 获取当前激活的标签页对应的分类
+                    const activeTab = this.panel.querySelector('.shield-tab button.active');
+                    const category = activeTab.dataset.category;
+                    // 将关键词添加到对应分类的屏蔽关键词集合中
+                    this.manager[category].data.add(keyword);
+                    // 清空输入框
+                    input.value = '';
+                    // 调用防抖后的保存数据函数保存关键词
+                    saveDataDebounced(category);
+                    // 重新渲染该分类的屏蔽关键词列表
+                    this.renderKeywordsList(category);
+                }
+            });
         }
 
         // 应用面板样式
