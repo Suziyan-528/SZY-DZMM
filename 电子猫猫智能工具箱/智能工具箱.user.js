@@ -94,26 +94,26 @@
             existingBar.remove();
         }
 
-    const updateBar = document.createElement('div');
-    updateBar.id = 'update-notification-bar'; // 唯一标识
-    updateBar.style.cssText = `
-        padding: 12px;
-        background: #ffeb3b;
-        border-radius: 8px;
-        margin-bottom: 16px;
-        text-align: center;
-    `;
-    updateBar.innerHTML = `
-        <strong>发现新版本 ${latest.tag_name}！</strong><br>
-        ${latest.body.split('\n').map(line => `<span>${line}</span>`).join('<br>')}<br>
-        <a href="${latest.html_url}" target="_blank" style="color: #007bff; text-decoration: underline;">立即更新</a>
-    `;
+        const updateBar = document.createElement('div');
+        updateBar.id = 'update-notification-bar'; // 唯一标识
+        updateBar.style.cssText = `
+            padding: 12px;
+            background: #ffeb3b;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            text-align: center;
+        `;
+        updateBar.innerHTML = `
+            <strong>发现新版本 ${latest.tag_name}！</strong><br>
+            ${latest.body.split('\n').map(line => `<span>${line}</span>`).join('<br>')}<br>
+            <a href="${latest.html_url}" target="_blank" style="color: #007bff; text-decoration: underline;">立即更新</a>
+        `;
 
-    const panel = document.getElementById('smart-shield-panel');
-    if (panel) {
-        panel.insertBefore(updateBar, panel.firstChild);
+        const panel = document.getElementById('smart-shield-panel');
+        if (panel) {
+            panel.insertBefore(updateBar, panel.firstChild);
+        }
     }
-}
 
 
     /* ====================== 新功能：标签屏蔽系统 ====================== */
@@ -122,25 +122,34 @@
             // 配置存储键名
             this.STORAGE_KEYS = {
                 authorTag: 'HIDE_AUTHOR_TAG',
-                usageTag: 'HIDE_USAGE_TAG'
+                usageTag: 'HIDE_USAGE_TAG',
+                originTag: 'HIDE_ORIGIN_TAG'
             };
 
             // 初始化开关状态
             this.state = {
                 hideAuthorTag: GM_getValue(this.STORAGE_KEYS.authorTag, false),
-                hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false)
+                hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false),
+                hideOriginTag: GM_getValue(this.STORAGE_KEYS.originTag, false)
             };
+
+            // 初始化注入标记
+            this.injected = false;
 
             // 如果已有面板则注入UI
             if (document.getElementById('smart-shield-panel')) {
                 this.injectUI();
             }
+            this.injected = false;
+
         }
 
         // 执行标签屏蔽
         execute() {
             this.toggleTag('.item-author', this.state.hideAuthorTag);
             this.toggleTag('.item-usage', this.state.hideUsageTag);
+            this.toggleOriginTag(this.state.hideOriginTag); // 新增屏蔽逻辑
+            this.injectStyle(); // 注入样式
         }
 
         // 通用标签显示/隐藏控制
@@ -172,6 +181,34 @@
             });
         }
 
+
+        toggleOriginTag(shouldHide) {
+            document.querySelectorAll('.item-origin-type').forEach(originEl => {
+                if (originEl.textContent.includes('转载')) {
+                    if (shouldHide) {
+                        const parentEl = originEl.closest('[id^="item"]');
+                        if (parentEl) {
+                            const itemId = parentEl.id;
+                            const itemEl = document.getElementById(itemId);
+                            if (itemEl) {
+                                itemEl.dataset.originalDisplay = itemEl.style.display || 'block';
+                                itemEl.style.display = 'none';
+                            }
+                        }
+                    } else {
+                        const parentEl = originEl.closest('[id^="item"]');
+                        if (parentEl) {
+                            const itemId = parentEl.id;
+                            const itemEl = document.getElementById(itemId);
+                            if (itemEl) {
+                                itemEl.style.display = itemEl.dataset.originalDisplay;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // 新增样式注入
         injectStyle() {
             GM_addStyle(`
@@ -198,20 +235,22 @@
         `);
         }
 
-        execute() {
-            this.toggleTag('.item-author', this.state.hideAuthorTag);
-            this.toggleTag('.item-usage', this.state.hideUsageTag);
-            this.injectStyle(); // 注入样式
-        }
-
-
-
         // 在原有面板中注入新UI
         injectUI() {
+            if (this.injected) return;
             const panel = document.getElementById('smart-shield-panel');
+            if (!panel) return;
+
+            // 检查是否已存在标签屏蔽容器
+            if (panel.querySelector('.tag-shield-container')) {
+                this.injected = true;
+                return;
+            }
+
 
             // 创建标签屏蔽区域
             const container = document.createElement('div');
+            container.classList.add('tag-shield-container');
             container.style.padding = '16px';
             container.innerHTML = `
                 <div style="margin-bottom: 12px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px;">
@@ -226,6 +265,10 @@
                         <input type="checkbox" ${this.state.hideUsageTag ? 'checked' : ''} id="toggle-usage-tag">
                         <span>隐藏所有项目热度</span>
                     </label>
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" ${this.state.hideOriginTag ? 'checked' : ''} id="toggle-origin-tag">
+                        <span>隐藏所有转载项目</span>
+                        </label>
                 </div>
             `;
 
@@ -241,9 +284,16 @@
                 GM_setValue(this.STORAGE_KEYS.usageTag, e.target.checked);
                 this.execute();
             });
+            container.querySelector('#toggle-origin-tag').addEventListener('change', (e) => {
+                this.state.hideOriginTag = e.target.checked;
+                GM_setValue(this.STORAGE_KEYS.originTag, e.target.checked);
+                this.execute();
+            });
 
             // 插入到版本信息下方
             panel.insertBefore(container, panel.querySelector('.shield-tab'));
+            this.injected = true;
+
         }
     }
 
@@ -294,6 +344,48 @@
         DEBOUNCE: 300
         // 防抖时间，暂未使用
     };
+
+    // 导出配置
+    function exportConfig() {
+        const exportData = {
+            categories: CONFIG.CATEGORIES,
+            tagShieldState: new TagShield().state
+        };
+        const jsonData = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'smart_toolbox_config.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // 更新分类配置后，重新执行屏蔽逻辑
+    function applyCategoryConfig() {
+        Object.values(CONFIG.CATEGORIES).forEach(category => {
+            const keywords = GM_getValue(category.storageKey, []);
+            const elements = document.querySelectorAll(category.selector);
+            elements.forEach(element => {
+                const text = element.textContent;
+                if (category.matchType === 'exact') {
+                    if (keywords.includes(text)) {
+                        element.style.display = 'none';
+                    }
+                } else if (category.matchType === 'fuzzy') {
+                    if (keywords.some(keyword => text.includes(keyword))) {
+                        element.style.display = 'none';
+                    }
+                } else if (category.matchType === 'regex') {
+                    if (keywords.some(keyword => new RegExp(keyword).test(text))) {
+                        element.style.display = 'none';
+                    }
+                }
+            });
+        });
+    }
+
+
 
     /* ========================== 核心系统 =========================== */
     // 防抖函数，用于避免用户频繁操作触发保存数据
@@ -546,6 +638,15 @@
                 // 点击油猴菜单命令时切换屏蔽面板的显示状态
                 this.togglePanel();
             });
+            GM_registerMenuCommand('导出配置', exportConfig);
+            GM_registerMenuCommand('导入配置', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => this.importConfig(e);
+                input.click();
+            });
+
 
             // 动态内容监听
             new MutationObserver(() => this.executeShielding())
@@ -740,57 +841,131 @@
         buildImportExport() {
             const tools = document.createElement('div');
             tools.style.padding = '16px';
+
+            // 导出按钮
             const exportButton = document.createElement('button');
-            exportButton.textContent = '导出配置';
-            exportButton.addEventListener('click', this.exportConfig.bind(this));
-            const importInput = document.createElement('input');
-            importInput.type = 'file';
-            importInput.accept = '.json';
-            importInput.addEventListener('change', this.importConfig.bind(this));
-            tools.appendChild(exportButton);
-            tools.appendChild(importInput);
+            // 移除按钮默认样式
+            exportButton.style.border = 'none';
+            exportButton.style.background = 'transparent';
+            exportButton.innerHTML = `
+            <span style="display: inline-block; 
+                padding: 6px 12px;
+                background: #ADD8E6;
+                color: white;
+                border-radius: 4px;
+                cursor: pointer;">
+                导出配置
+            <input type="file" 
+               accept=".json" 
+               style="display: none;">
+            </span>
+            `;
+            // 获取导出按钮内的 input 元素
+            const exportFileInput = exportButton.querySelector('input');
+            // 点击导出按钮触发导出配置方法
+            exportButton.addEventListener('click', () => this.exportConfig());
+
+            // 导入按钮
+            const importLabel = document.createElement('button'); // 这里使用 button 替代 label
+            // 移除按钮默认样式
+            importLabel.style.border = 'none';
+            importLabel.style.background = 'transparent';
+            importLabel.innerHTML = `
+            <span style="display: inline-block; 
+                padding: 6px 12px;
+                background: #ADD8E6;
+                color: white;
+                border-radius: 4px;
+                cursor: pointer;">
+                导入配置
+            <input type="file" 
+               accept=".json" 
+               style="display: none;">
+            </span>
+            `;
+            // 获取导入按钮内的 input 元素
+            const importFileInput = importLabel.querySelector('input');
+            // 点击导入按钮触发文件选择框
+            importLabel.addEventListener('click', () => importFileInput.click());
+            // 文件选择变化时触发导入配置方法
+            importFileInput.addEventListener('change', (e) => this.importConfig(e));
+
+            tools.append(exportButton, importLabel);
             return tools;
         }
 
         // 导出配置文件
         exportConfig() {
-            const data = Object.entries(this.manager).reduce((acc, [key, cfg]) => {
-                acc[key] = [...cfg.data];
-                return acc;
-            }, {});
+            const data = {
+                categories: Object.entries(this.manager).reduce((acc, [key, cfg]) => {
+                    acc[key] = [...cfg.data];
+                    return acc;
+                }, {}),
+                tagShieldState: new TagShield().state
+            };
 
-            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
 
             const a = document.createElement('a');
             a.href = url;
             a.download = `shield-config_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
+            URL.revokeObjectURL(url);
         }
 
-        // 导入配置文件
-        importConfig(input) {
-            const file = input.files[0];
+        // 在导入配置成功后，调用 applyCategoryConfig 函数
+         importConfig(inputEvent) {
+            const file = inputEvent.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = e => {
+            reader.onload = (e) => {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    Object.entries(data).forEach(([key, values]) => {
+                    const importedData = JSON.parse(e.target.result);
+
+                    // 处理分类配置
+                    Object.entries(importedData.categories).forEach(([key, values]) => {
                         if (this.manager[key]) {
                             this.manager[key].data = new Set(values);
                             this.saveData(key);
+                            this.refreshList(key, this.panel.querySelector(`[data-key="${key}"] .shield-list`));
                         }
                     });
+
+                    // 处理标签屏蔽状态
+                    const tagShield = new TagShield();
+                    Object.entries(tagShield.STORAGE_KEYS).forEach(([stateKey, storageKey]) => {
+                        const value = importedData.tagShieldState[`hide${stateKey.charAt(0).toUpperCase() + stateKey.slice(1)}`];
+                        GM_setValue(storageKey, value);
+                        tagShield.state[`hide${stateKey.charAt(0).toUpperCase() + stateKey.slice(1)}`] = value;
+                    });
+
+                    // 强制更新UI
+                    document.querySelectorAll('#toggle-author-tag, #toggle-usage-tag, #toggle-origin-tag').forEach(checkbox => {
+                        const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
+                        checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
+                    });
+                    tagShield.execute();
+
+                    // 刷新屏蔽逻辑
                     this.executeShielding(true);
-                } catch(err) {
-                    alert('配置文件格式错误');
+                    console.log('[配置导入] 成功');
+                } catch (error) {
+                    alert('配置文件格式错误: ' + error.message);
+                    console.error('[配置导入] 失败', error);
                 }
             };
             reader.readAsText(file);
         }
     }
+
+    // 导入后更新复选框状态
+    document.querySelectorAll('#toggle-author-tag, #toggle-usage-tag, #toggle-origin-tag').forEach(checkbox => {
+        const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
+        checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
+    });
+
 
     /* ==================== 初始化系统 ==================== */
     let initialized = false;
