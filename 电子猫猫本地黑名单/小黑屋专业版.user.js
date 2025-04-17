@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能屏蔽小黑屋-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.6.0
+// @version      5.5.5
 // @description  支持多维屏蔽、可视化UI管理的智能内容过滤工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -40,7 +40,7 @@
 
     /* ========================== 自动更新模块 ========================== */
     // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.6.0';
+    const CURRENT_VERSION = '5.5.5';
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
 
