@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能工具箱-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.6.1
+// @version      5.6.2
 // @description  支持多维屏蔽、可视化UI管理的智能工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -29,7 +29,6 @@
     'use strict';
     // 判断是否为移动端设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
     // 定义域名匹配模式，用于匹配目标域名
     const domainPattern = /(meimoai\d+|sexyai)\.(com|top)/i;
     // 检查当前页面的域名是否符合目标域名模式
@@ -37,13 +36,11 @@
         console.log('[屏蔽系统] 非目标域名，退出执行');
         return;
     }
-
     /* ========================== 自动更新模块 ========================== */
     // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.6.1';
+    const CURRENT_VERSION = '5.6.2';
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
-
     // 检查更新逻辑
     function checkForUpdates() {
         GM_xmlhttpRequest({
@@ -73,7 +70,6 @@
             }
         });
     }
-
     // 版本号比较函数
     function isNewerVersion(latest, current) {
         // 移除 "V" 前缀并分割
@@ -85,7 +81,6 @@
         }
         return false;
     }
-
     // 显示更新通知UI
     function showUpdateNotification(latest) {
     // 清理旧更新条
@@ -93,7 +88,6 @@
         if (existingBar) {
             existingBar.remove();
         }
-
         const updateBar = document.createElement('div');
         updateBar.id = 'update-notification-bar'; // 唯一标识
         updateBar.style.cssText = `
@@ -108,14 +102,11 @@
             ${latest.body.split('\n').map(line => `<span>${line}</span>`).join('<br>')}<br>
             <a href="${latest.html_url}" target="_blank" style="color: #007bff; text-decoration: underline;">立即更新</a>
         `;
-
         const panel = document.getElementById('smart-shield-panel');
         if (panel) {
             panel.insertBefore(updateBar, panel.firstChild);
         }
     }
-
-
     /* ====================== 新功能：标签屏蔽系统 ====================== */
     class TagShield {
         constructor() {
@@ -125,14 +116,12 @@
                 usageTag: 'HIDE_USAGE_TAG',
                 originTag: 'HIDE_ORIGIN_TAG'
             };
-
             // 初始化开关状态
             this.state = {
                 hideAuthorTag: GM_getValue(this.STORAGE_KEYS.authorTag, false),
                 hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false),
                 hideOriginTag: GM_getValue(this.STORAGE_KEYS.originTag, false)
             };
-
             // 初始化注入标记
             this.injected = false;
 
@@ -140,10 +129,7 @@
             if (document.getElementById('smart-shield-panel')) {
                 this.injectUI();
             }
-            this.injected = false;
-
         }
-
         // 执行标签屏蔽
         execute() {
             this.toggleTag('.item-author', this.state.hideAuthorTag);
@@ -151,7 +137,6 @@
             this.toggleOriginTag(this.state.hideOriginTag); // 新增屏蔽逻辑
             this.injectStyle(); // 注入样式
         }
-
         // 通用标签显示/隐藏控制
         toggleTag(selector, shouldHide) {
             document.querySelectorAll(selector).forEach(el => {
@@ -159,7 +144,6 @@
                     // 记录原始尺寸
                     el.dataset.originalWidth = el.style.width || 'auto';
                     el.dataset.originalHeight = el.style.height || 'auto';
-
                     // 保持布局占位
                     el.style.cssText += `
                     visibility: hidden !important;
@@ -180,8 +164,6 @@
                 }
             });
         }
-
-
         toggleOriginTag(shouldHide) {
             document.querySelectorAll('.item-origin-type').forEach(originEl => {
                 if (originEl.textContent.includes('转载')) {
@@ -208,7 +190,6 @@
                 }
             });
         }
-
         // 新增样式注入
         injectStyle() {
             GM_addStyle(`
@@ -218,8 +199,7 @@
                 pointer-events: none !important;
                 user-select: none !important;
                 position: relative !important;
-            }
-            
+            }         
             /* 添加伪元素占位提示 */
             .item-usage[style*="hidden"]::after,
             .item-author[style*="hidden"]::after {
@@ -234,7 +214,6 @@
             }
         `);
         }
-
         // 在原有面板中注入新UI
         injectUI() {
             if (this.injected) return;
@@ -246,8 +225,6 @@
                 this.injected = true;
                 return;
             }
-
-
             // 创建标签屏蔽区域
             const container = document.createElement('div');
             container.classList.add('tag-shield-container');
@@ -271,14 +248,12 @@
                         </label>
                 </div>
             `;
-
             // 事件绑定
             container.querySelector('#toggle-author-tag').addEventListener('change', (e) => {
                 this.state.hideAuthorTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.authorTag, e.target.checked);
                 this.execute();
             });
-
             container.querySelector('#toggle-usage-tag').addEventListener('change', (e) => {
                 this.state.hideUsageTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.usageTag, e.target.checked);
@@ -289,15 +264,12 @@
                 GM_setValue(this.STORAGE_KEYS.originTag, e.target.checked);
                 this.execute();
             });
-
             // 插入到版本信息下方
             panel.insertBefore(container, panel.querySelector('.shield-tab'));
             this.injected = true;
 
         }
     }
-
-
     /* ========================== 用户配置区域 ========================== */
     const CONFIG = {
         // 分类配置 (可自由增减)
@@ -333,7 +305,6 @@
                 // 匹配类型为正则表达式匹配
             }
         },
-
         // 高级配置
         PARENT_SELECTOR: 'uni-view.item',
         // 父元素的 CSS 选择器，用于隐藏匹配元素的父元素
@@ -344,7 +315,6 @@
         DEBOUNCE: 300
         // 防抖时间，暂未使用
     };
-
     // 导出配置
     function exportConfig() {
         const exportData = {
@@ -360,7 +330,6 @@
         a.click();
         URL.revokeObjectURL(url);
     }
-
     // 更新分类配置后，重新执行屏蔽逻辑
     function applyCategoryConfig() {
         Object.values(CONFIG.CATEGORIES).forEach(category => {
@@ -384,9 +353,6 @@
             });
         });
     }
-
-
-
     /* ========================== 核心系统 =========================== */
     // 防抖函数，用于避免用户频繁操作触发保存数据
     function debounce(func, delay) {
@@ -417,7 +383,6 @@
                 this.createMobileTrigger();
             }
             setTimeout(() => checkForUpdates(), 1000);
-
             // 新增：初始化标签屏蔽系统
             this.tagShield = new TagShield();
             // 修改执行屏蔽逻辑
@@ -429,7 +394,6 @@
             // 首次执行
             this.tagShield.execute();
         }
-
         // 创建移动端触发按钮（极简版）
         createMobileTrigger() {
             const trigger = document.createElement('div');
@@ -459,7 +423,6 @@
             trigger.addEventListener('click', () => this.togglePanel());
             document.body.appendChild(trigger);
         }
-
         // 初始化管理器，加载存储的屏蔽关键词
         initManager() {
             const managers = {};
@@ -473,7 +436,6 @@
             });
             return managers;
         }
-
         // 保存屏蔽关键词到存储中
         saveData(key) {
             GM_setValue(
@@ -482,7 +444,6 @@
                 JSON.stringify([...this.manager[key].data])
             );
         }
-
         /* ========== 面板系统 ========== */
         // 初始化屏蔽面板
         initPanel() {
@@ -496,14 +457,11 @@
             this.buildPanelUI();
             // 将面板添加到文档的根元素中
             document.documentElement.appendChild(this.panel);
-
             // 获取面板中的输入框和添加按钮
             const input = this.panel.querySelector('.shield-input input');
             const addButton = this.panel.querySelector('.shield-input button');
-
             // 创建防抖后的保存数据函数，使用 CONFIG.DEBOUNCE 作为防抖时间
             const saveDataDebounced = debounce(this.saveData.bind(this), CONFIG.DEBOUNCE);
-
             // 为添加按钮添加点击事件监听器
             addButton.addEventListener('click', () => {
                 // 获取输入框中的关键词，并去除首尾空格
@@ -523,7 +481,6 @@
                 }
             });
         }
-
         // 应用面板样式
         applyPanelStyle() {
             GM_addStyle(`
@@ -605,7 +562,6 @@
                 }
             `);
         }
-
         // 绑定全局事件
         bindGlobalEvents() {
             // 快捷键监听
@@ -620,7 +576,6 @@
                     e.stopPropagation();
                 }
             });
-
             // 通用点击关闭
             document.addEventListener('click', e => {
                 if (!this.isPanelOpen) return;
@@ -632,7 +587,6 @@
                     this.togglePanel();
                 }
             });
-
             // 油猴菜单命令
             GM_registerMenuCommand(isMobile ? '显示屏蔽面板' : '打开屏蔽面板', () => {
                 // 点击油猴菜单命令时切换屏蔽面板的显示状态
@@ -646,20 +600,16 @@
                 input.onchange = (e) => this.importConfig(e);
                 input.click();
             });
-
-
             // 动态内容监听
             new MutationObserver(() => this.executeShielding())
                .observe(document.body, { childList: true, subtree: true });
         }
-
         /* ========== 移动端适配 ========== */
         // 切换屏蔽面板的显示状态
         togglePanel() {
             this.isPanelOpen = !this.isPanelOpen;
             this.panel.style.display = this.isPanelOpen ? 'block' : 'none';
         }
-
         // 构建面板 UI
         buildPanelUI() {
 
@@ -668,46 +618,36 @@
                     padding: 12px;
                     text-align: center;
                     font-size: 1.1em;
-                    color: rbag(255,255,255,0.5);
+                    color: rgba(128,128,128,0.5);
                 `;
-    versionInfo.textContent = `电子猫猫工具箱${CURRENT_VERSION} | tg@苏子言`;
-
+                versionInfo.textContent = `电子猫猫工具箱${CURRENT_VERSION} | tg@苏子言`;
             // 关闭按钮
             const closeBtn = document.createElement('button');
             closeBtn.className = 'panel-close';
             closeBtn.textContent = '×';
             closeBtn.onclick = () => this.togglePanel();
-
             // 选项卡容器
             const tabBar = document.createElement('div');
             tabBar.className = 'shield-tab';
-
             // 内容容器
             const contentArea = document.createElement('div');
             contentArea.className = 'shield-content';
-
             // 构建分类面板
             Object.entries(this.manager).forEach(([key, cfg], index) => {
                 // 选项卡按钮
                 const tabBtn = this.createTabButton(cfg.label, index === 0);
-
                 // 内容面板
                 const panel = this.createContentPanel(key, cfg, index === 0);
-
                 // 选项卡切换逻辑
                 tabBtn.onclick = () => this.switchTab(tabBtn, panel);
-
                 tabBar.appendChild(tabBtn);
                 contentArea.appendChild(panel);
             });
-
             // 导入导出工具
             const tools = this.buildImportExport();
-
             // 组装面板
             this.panel.append(versionInfo, closeBtn, tabBar, contentArea, tools);
         }
-
         // 创建选项卡按钮
         createTabButton(label, isActive) {
             const btn = document.createElement('button');
@@ -715,53 +655,42 @@
             btn.className = isActive ? 'active' : '';
             return btn;
         }
-
         // 创建内容面板
         createContentPanel(key, cfg, isVisible) {
             const panel = document.createElement('div');
             panel.dataset.key = key;
             panel.style.display = isVisible ? 'block' : 'none';
             panel.className = 'content-panel';
-
             // 输入组
             const inputGroup = document.createElement('div');
             inputGroup.className = 'shield-input';
-
             const input = document.createElement('input');
             input.placeholder = `添加${cfg.label}关键词`;
-
             const addBtn = document.createElement('button');
             addBtn.textContent = '添加';
             addBtn.onclick = () => this.handleAddKey(key, input);
-
             // 关键词列表
             const list = document.createElement('ul');
             list.className = 'shield-list';
             this.refreshList(key, list);
-
             inputGroup.append(input, addBtn);
             panel.append(inputGroup, list);
-
             return panel;
         }
-
         // 切换选项卡
         switchTab(activeBtn, activePanel) {
             // 隐藏所有面板
             this.panel.querySelectorAll('.content-panel').forEach(p => {
                 p.style.display = 'none';
             });
-
             // 移除所有激活状态
             this.panel.querySelectorAll('.shield-tab button').forEach(b => {
                 b.classList.remove('active');
             });
-
             // 显示目标面板
             activePanel.style.display = 'block';
             activeBtn.classList.add('active');
         }
-
         /* ========== 核心功能 ========== */
         // 执行屏蔽操作
         executeShielding(force = false) {
@@ -770,12 +699,10 @@
                 parent.style.removeProperty('display');
             });
             this.processed = new WeakSet(); // 清空处理记录
-
             // 重新执行屏蔽
             Object.entries(this.manager).forEach(([key, cfg]) => {
                 document.querySelectorAll(cfg.selector).forEach(el => {
                     if (this.processed.has(el) && !force) return;
-
                     const content = el.textContent.trim();
                     const shouldBlock = [...cfg.data].some(word => {
                         switch(cfg.matchType) {
@@ -784,7 +711,6 @@
                             case 'regex': return new RegExp(word, 'i').test(content);
                         }
                     });
-
                     if (shouldBlock) {
                         const parent = el.closest(CONFIG.PARENT_SELECTOR);
                         parent?.style.setProperty('display', 'none', 'important');
@@ -793,7 +719,6 @@
                 });
             });
         }
-
         /* ========== 数据管理 ========== */
         // 刷新关键词列表
         refreshList(key, list) {
@@ -813,19 +738,16 @@
                 list.appendChild(li);
             });
         }
-
         // 处理添加关键词
         handleAddKey(key, input) {
             const word = input.value.trim();
             if (!word) return;
-
             this.manager[key].data.add(word);
             this.saveData(key);
             this.refreshList(key, input.parentElement.nextElementSibling);
             input.value = '';
             this.executeShielding(true);
         }
-
         // 处理移除关键词
         handleRemove(key, word) {
             this.manager[key].data.delete(word);
@@ -836,12 +758,10 @@
             this.isPanelOpen = true; // 强制保持面板开启状态
             this.panel.style.display = 'block'; // 显式维持显示
         }
-
         // 构建导入导出工具
         buildImportExport() {
             const tools = document.createElement('div');
             tools.style.padding = '16px';
-
             // 导出按钮
             const exportButton = document.createElement('button');
             // 移除按钮默认样式
@@ -864,7 +784,6 @@
             const exportFileInput = exportButton.querySelector('input');
             // 点击导出按钮触发导出配置方法
             exportButton.addEventListener('click', () => this.exportConfig());
-
             // 导入按钮
             const importLabel = document.createElement('button'); // 这里使用 button 替代 label
             // 移除按钮默认样式
@@ -889,11 +808,9 @@
             importLabel.addEventListener('click', () => importFileInput.click());
             // 文件选择变化时触发导入配置方法
             importFileInput.addEventListener('change', (e) => this.importConfig(e));
-
             tools.append(exportButton, importLabel);
             return tools;
         }
-
         // 导出配置文件
         exportConfig() {
             const data = {
@@ -903,27 +820,22 @@
                 }, {}),
                 tagShieldState: new TagShield().state
             };
-
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-
             const a = document.createElement('a');
             a.href = url;
             a.download = `shield-config_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
         }
-
         // 在导入配置成功后，调用 applyCategoryConfig 函数
          importConfig(inputEvent) {
             const file = inputEvent.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
                     const importedData = JSON.parse(e.target.result);
-
                     // 处理分类配置
                     Object.entries(importedData.categories).forEach(([key, values]) => {
                         if (this.manager[key]) {
@@ -932,7 +844,6 @@
                             this.refreshList(key, this.panel.querySelector(`[data-key="${key}"] .shield-list`));
                         }
                     });
-
                     // 处理标签屏蔽状态
                     const tagShield = new TagShield();
                     Object.entries(tagShield.STORAGE_KEYS).forEach(([stateKey, storageKey]) => {
@@ -940,14 +851,12 @@
                         GM_setValue(storageKey, value);
                         tagShield.state[`hide${stateKey.charAt(0).toUpperCase() + stateKey.slice(1)}`] = value;
                     });
-
                     // 强制更新UI
                     document.querySelectorAll('#toggle-author-tag, #toggle-usage-tag, #toggle-origin-tag').forEach(checkbox => {
                         const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
                         checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
                     });
                     tagShield.execute();
-
                     // 刷新屏蔽逻辑
                     this.executeShielding(true);
                     console.log('[配置导入] 成功');
@@ -959,33 +868,26 @@
             reader.readAsText(file);
         }
     }
-
     // 导入后更新复选框状态
     document.querySelectorAll('#toggle-author-tag, #toggle-usage-tag, #toggle-origin-tag').forEach(checkbox => {
         const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
         checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
     });
-
-
     /* ==================== 初始化系统 ==================== */
     let initialized = false;
     let updateTimer = null;
 function init() {
     if (initialized || document.readyState !== 'complete') return;
-
     checkForUpdates();
     if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
     updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
-
     new ShieldSystem().executeShielding();
     initialized = true;
 }
-
     // 监听页面加载完成事件
     window.addEventListener('load', init);
     // 监听 DOM 内容加载完成事件
     document.addEventListener('DOMContentLoaded', init);
     // 延迟 2 秒后尝试初始化
     setTimeout(init, 2000);
-
 })();
