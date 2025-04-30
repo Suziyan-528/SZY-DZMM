@@ -1,73 +1,125 @@
-import { GITHUB_REPO, UPDATE_CHECK_INTERVAL, CURRENT_VERSION } from './config.js';
+// src/core/RuleEngine.js
 
-// 比较版本号，判断新版本是否比当前版本新
-function isNewerVersion(current, latest) {
-    const currentParts = current.split('.').map(Number);
-    const latestParts = latest.split('.').map(Number);
+import { CATEGORIES } from '../config.js';
 
-    for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
-        const currentPart = currentParts[i] || 0;
-        const latestPart = latestParts[i] || 0;
+/**
+ * 规则匹配引擎
+ * @class
+ */
+export class RuleEngine {
+  constructor() {
+    this.cachedRegex = new Map(); // 缓存正则表达式提升性能
+  }
 
-        if (latestPart > currentPart) {
-            return true;
-        } else if (latestPart < currentPart) {
-            return false;
-        }
-    }
-    return false;
-}
+  /* ====================== 基础规则匹配 ====================== */
 
-// 显示更新通知
-function showUpdateNotification(latestVersion) {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background-color: #007bff;
-        color: white;
-        padding: 12px;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        z-index: 9999;
-    `;
-    notification.innerHTML = `
-        发现新版本 v${latestVersion}！
-        <a href="https://github.com/${GITHUB_REPO}/releases" target="_blank" style="color: white; text-decoration: underline; margin-left: 8px;">查看详情</a>
-    `;
-    document.body.appendChild(notification);
-
-    // 一段时间后自动关闭通知
-    setTimeout(() => {
-        notification.remove();
-    }, 10000);
-}
-
-// 检查更新
-async function checkForUpdates() {
+  /**
+   * 单条规则匹配检测
+   * @param {string} content - 待匹配内容
+   * @param {Object} rule - 规则对象
+   * @param {string} rule.pattern - 匹配模式
+   * @param {string} rule.type - 规则类型（exact/fuzzy/regex）
+   * @returns {boolean} 是否匹配成功
+   */
+  matchSingleRule(content, { pattern, type }) {
     try {
-        const lastCheck = GM_getValue('lastUpdateCheck', 0);
-        const now = Date.now();
-        if (now - lastCheck < UPDATE_CHECK_INTERVAL) {
-            return;
+      switch (type) {
+        case 'exact':
+          return content === pattern;
+
+        case 'fuzzy':
+          return content.toLowerCase().includes(pattern.toLowerCase());
+
+        case 'regex': {
+          // 缓存正则表达式避免重复编译
+          if (!this.cachedRegex.has(pattern)) {
+            this.cachedRegex.set(pattern, new RegExp(pattern, 'i'));
+          }
+          return this.cachedRegex.get(pattern).test(content);
         }
 
-        const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        const latestVersion = data.tag_name.replace('v', '');
-
-        if (isNewerVersion(CURRENT_VERSION, latestVersion)) {
-            showUpdateNotification(latestVersion);
-        }
-
-        GM_setValue('lastUpdateCheck', now);
+        default:
+          console.error(`未知规则类型: ${type}`);
+          return false;
+      }
     } catch (error) {
-        console.error('检查更新时出错:', error);
+      console.error(`规则匹配失败 (${type}:${pattern})`, error);
+      return false;
     }
-}
+  }
 
-export { checkForUpdates, isNewerVersion, showUpdateNotification };    
+  /* ====================== 复合规则逻辑 ====================== */
+
+  /**
+   * 逻辑运算符组合匹配
+   * @param {string} content - 待匹配内容
+   * @param {Object[]} rules - 规则集合
+   * @param {string} [logic='OR'] - 逻辑运算符（AND/OR）
+   * @returns {boolean} 是否匹配成功
+   */
+  matchWithLogic(content, rules, logic = 'OR') {
+    if (!Array.isArray(rules) || rules.length === 0) return false;
+
+    return rules.reduce((result, rule) => {
+      const currentMatch = this.matchSingleRule(content, rule);
+      return logic === 'OR' ? (result || currentMatch) : (result && currentMatch);
+    }, logic === 'AND');
+  }
+
+  /* ====================== 动态规则处理 ====================== */
+
+  /**
+   * 转换用户配置为规则对象
+   * @param {Object} categoryConfig - 分类配置
+   * @returns {Object[]} 标准化规则集合
+   */
+  normalizeRules(categoryConfig) {
+    return [...categoryConfig.data].map(pattern => ({
+      pattern,
+      type: categoryConfig.matchType
+    }));
+  }
+
+  /**
+   * 批量验证规则有效性
+   * @param {Object[]} rules - 规则集合
+   * @returns {Object} 验证结果 { valid: boolean, errors: string[] }
+   */
+  validateRules(rules) {
+    const errors = [];
+    
+    rules.forEach((rule, index) => {
+      if (!rule.pattern || typeof rule.pattern !== 'string') {
+        errors.push(`规则 #${index + 1}: 缺少有效匹配模式`);
+      }
+
+      if (rule.type === 'regex') {
+        try {
+          new RegExp(rule.pattern, 'i');
+        } catch (error) {
+          errors.push(`规则 #${index + 1}: 无效正则表达式 - ${error.message}`);
+        }
+      }
+    });
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /* ====================== 时间范围规则 ====================== */
+
+  /**
+   * 时间范围匹配（示例扩展）
+   * @param {Date} contentDate - 内容发布时间
+   * @param {Object} options - 时间配置
+   * @param {number} [options.daysAgo=3] - 屏蔽 N 天前的内容
+   * @returns {boolean} 是否在屏蔽时间范围内
+   */
+  isInTimeRange(contentDate, { daysAgo = 3 }) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+    return contentDate < cutoffDate;
+  }
+}
