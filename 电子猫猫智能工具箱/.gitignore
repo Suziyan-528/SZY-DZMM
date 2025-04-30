@@ -1,0 +1,12 @@
+# 依赖相关
+node_modules/
+package-lock.json
+
+# 构建产物
+dist/
+
+# 日志文件
+*.log
+
+# 临时文件
+.tmp/    
