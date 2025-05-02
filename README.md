@@ -13,7 +13,7 @@
 三、加载脚本   
 一键安装链接：[点击一键安装](https://raw.githubusercontent.com/Suziyan-528/SZY-DZMM/refs/heads/main/%E7%94%B5%E5%AD%90%E7%8C%AB%E7%8C%AB%E6%99%BA%E8%83%BD%E5%B7%A5%E5%85%B7%E7%AE%B1/%E6%99%BA%E8%83%BD%E5%B7%A5%E5%85%B7%E7%AE%B1.user.js)    
 手动安装：  
-1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.6.2)   
+1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V5.7.0)   
 2.点击已经安装好的油猴插件，然后选择添加脚本   
 3.选择右上角的实用工具-导入文件   
 4.导入你提前下载好的文件，注意文件后缀是.user.js   
@@ -23,12 +23,7 @@
 **脚本方法**：
 一、安装好以后，选择编辑脚本      
 二、查看用户配置区    
-**旧版本（V2.3）**：   
-【关键词类目】：1.作者："item-author"   2.标题："item-title-scope"   3.简介："item-des"  可以根据自己的需要修改，修改下面中括号里的内容      
-TARGET_CLASS: ["item-author","item-title-scope","item-des"]，    
-【屏蔽关键词】：例如作者名、标题、简介内容，每个关键词都需要打上""（英文双引号），然后再用英文,（逗号）隔开，问号填的内容就是您想要屏蔽的内容，例如："苏子言"         
-KEYWORDS: ["？",]，    
-**新版本（V5.5.0以上）**：桌面端通过快捷键 “Ctrl + Shift + a”，移动端点击悬浮按钮 “🛡️”，就能呼出可视化面板，直接操作即可   
+桌面端通过快捷键 “Ctrl + Shift + a”，移动端点击悬浮按钮 “🛡️”，就能呼出可视化面板，直接操作即可   
 三、点击保存，然后回到电子猫猫的页面，注意：更新了脚本内容以后，需要刷新一次网页才有用。   
 
 ---
