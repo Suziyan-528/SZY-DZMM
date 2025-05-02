@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能工具箱-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.6.2
+// @version      5.7.0
 // @description  支持多维屏蔽、可视化UI管理的智能工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -38,7 +38,7 @@
     }
     /* ========================== 自动更新模块 ========================== */
     // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.6.2';
+    const CURRENT_VERSION = '5.7.0';
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
     // 检查更新逻辑
@@ -83,7 +83,7 @@
     }
     // 显示更新通知UI
     function showUpdateNotification(latest) {
-    // 清理旧更新条
+        // 清理旧更新条
         const existingBar = document.getElementById('update-notification-bar');
         if (existingBar) {
             existingBar.remove();
@@ -129,6 +129,8 @@
             if (document.getElementById('smart-shield-panel')) {
                 this.injectUI();
             }
+
+
         }
         // 执行标签屏蔽
         execute() {
@@ -141,26 +143,29 @@
         toggleTag(selector, shouldHide) {
             document.querySelectorAll(selector).forEach(el => {
                 if (shouldHide) {
-                    // 记录原始尺寸
+                    // 记录原始尺寸和样式
                     el.dataset.originalWidth = el.style.width || 'auto';
                     el.dataset.originalHeight = el.style.height || 'auto';
+                    el.dataset.originalVisibility = el.style.visibility || 'visible';
+                    el.dataset.originalOpacity = el.style.opacity || '1';
+                    el.dataset.originalFlex = el.style.flex || '';
+                    el.dataset.originalMargin = el.style.margin || '';
+
                     // 保持布局占位
-                    el.style.cssText += `
-                    visibility: hidden !important;
-                    opacity: 0 !important;
-                    width: ${el.offsetWidth}px !important;
-                    height: ${el.offsetHeight}px !important;
-                    flex: 0 0 auto !important;  // 防止flex压缩空间
-                    margin: 0 !important;         // 消除边距影响
-                `;
+                    el.style.setProperty('visibility', 'hidden', 'important');
+                    el.style.setProperty('opacity', '0', 'important');
+                    el.style.setProperty('width', `${el.offsetWidth}px`, 'important');
+                    el.style.setProperty('height', `${el.offsetHeight}px`, 'important');
+                    el.style.setProperty('flex', '0 0 auto', 'important');  // 防止flex压缩空间
+                    el.style.setProperty('margin', '0', 'important');         // 消除边距影响
                 } else {
                     // 恢复原始样式
-                    el.style.cssText = `
-                    visibility: visible;
-                    opacity: 1;
-                    width: ${el.dataset.originalWidth};
-                    height: ${el.dataset.originalHeight};
-                `;
+                    el.style.setProperty('visibility', el.dataset.originalVisibility);
+                    el.style.setProperty('opacity', el.dataset.originalOpacity);
+                    el.style.setProperty('width', el.dataset.originalWidth);
+                    el.style.setProperty('height', el.dataset.originalHeight);
+                    el.style.setProperty('flex', el.dataset.originalFlex);
+                    el.style.setProperty('margin', el.dataset.originalMargin);
                 }
             });
         }
@@ -194,12 +199,12 @@
         injectStyle() {
             GM_addStyle(`
             /* 为被隐藏元素添加占位保护 */
-            .item-usage[style*="hidden"], 
+            .item-usage[style*="hidden"],
             .item-author[style*="hidden"] {
                 pointer-events: none !important;
                 user-select: none !important;
                 position: relative !important;
-            }         
+            }
             /* 添加伪元素占位提示 */
             .item-usage[style*="hidden"]::after,
             .item-author[style*="hidden"]::after {
@@ -230,23 +235,32 @@
             container.classList.add('tag-shield-container');
             container.style.padding = '16px';
             container.innerHTML = `
-                <div style="margin-bottom: 12px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px;">
-                    🏷️ 标签屏蔽
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" ${this.state.hideAuthorTag ? 'checked' : ''} id="toggle-author-tag">
-                        <span>隐藏所有作者名称</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" ${this.state.hideUsageTag ? 'checked' : ''} id="toggle-usage-tag">
-                        <span>隐藏所有项目热度</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" ${this.state.hideOriginTag ? 'checked' : ''} id="toggle-origin-tag">
-                        <span>隐藏所有转载项目</span>
-                        </label>
-                </div>
+            <div style="margin-bottom: 12px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px;">
+                🏷️ 标签屏蔽
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" ${this.state.hideAuthorTag ? 'checked' : ''} id="toggle-author-tag" style="display: none;">
+                    <span class="toggle-switch">
+                        <span class="toggle-slider"></span>
+                    </span>
+                    <span>隐藏所有作者名称</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" ${this.state.hideUsageTag ? 'checked' : ''} id="toggle-usage-tag" style="display: none;">
+                    <span class="toggle-switch">
+                        <span class="toggle-slider"></span>
+                    </span>
+                    <span>隐藏所有项目热度</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" ${this.state.hideOriginTag ? 'checked' : ''} id="toggle-origin-tag" style="display: none;">
+                    <span class="toggle-switch">
+                        <span class="toggle-slider"></span>
+                    </span>
+                    <span>隐藏所有转载项目</span>
+                </label>
+            </div>
             `;
             // 事件绑定
             container.querySelector('#toggle-author-tag').addEventListener('change', (e) => {
@@ -275,14 +289,16 @@
         // 分类配置 (可自由增减)
         CATEGORIES: {
             author: {
-                selector: '.item-author',
-                // 用于选择作者元素的 CSS 选择器
+                selector: `.item .item-author, .item-list .item-author`, // 精确匹配两种布局
                 storageKey: 'GLOBAL_AUTHOR_KEYS',
-                // 存储作者屏蔽关键词的键名
                 label: '👤 作者屏蔽',
-                // 显示在 UI 上的标签
-                matchType: 'exact'
-                // 匹配类型为精确匹配
+                matchType: 'exact',
+                processText: (text) => {
+                    return text
+                        .replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '')
+                        .replace(/^(作者：|Author:\s*)/i, '')
+                        .trim();
+                }
             },
             title: {
                 selector:  '.item-title-scope',
@@ -306,7 +322,7 @@
             }
         },
         // 高级配置
-        PARENT_SELECTOR: 'uni-view.item',
+        PARENT_SELECTOR: 'uni-view.item, uni-view.item-list',
         // 父元素的 CSS 选择器，用于隐藏匹配元素的父元素
         HOTKEY: 'Ctrl+Shift+a',
         // 打开屏蔽面板的快捷键
@@ -353,6 +369,7 @@
             });
         });
     }
+
     /* ========================== 核心系统 =========================== */
     // 防抖函数，用于避免用户频繁操作触发保存数据
     function debounce(func, delay) {
@@ -385,6 +402,20 @@
             setTimeout(() => checkForUpdates(), 1000);
             // 新增：初始化标签屏蔽系统
             this.tagShield = new TagShield();
+            // 新增快速屏蔽功能
+            this.quickShield = new QuickShield(this);
+            new MutationObserver((mutations) => {
+                mutations.forEach(mutation => {
+                    if (mutation.addedNodes.length) {
+                        this.executeShielding(true);
+                    }
+                });
+            }).observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true, // 监听属性变化（如 class 变更）
+                attributeFilter: ['class']
+            });
             // 修改执行屏蔽逻辑
             this.originalExecuteShielding = this.executeShielding.bind(this);
             this.executeShielding = (force = false) => {
@@ -560,6 +591,99 @@
                     cursor: pointer;
                     padding: 4px;
                 }
+                .toggle-switch {
+                position: relative;
+                display: inline-block;
+                width: 40px;
+                height: 18px;
+                background-color: #ccc;
+                border-radius: 9px;
+                transition: background-color 0.3s;
+            }
+
+            .toggle-slider {
+                position: absolute;
+                top: 1.1px;
+                left: 1.1px;
+                width: 16px;
+                height: 16px;
+                background-color: white;
+                border-radius: 50%;
+                transition: transform 0.3s;
+            }
+
+            input:checked + .toggle-switch {
+                background-color: rgb(23, 170, 253);
+            }
+
+            input:checked + .toggle-switch .toggle-slider {
+                transform: translateX(21px);
+            }
+            
+            
+            .shield-quick-menu {
+                position: absolute !important;
+                bottom: 8px !important;
+                right: 8px !important;
+                z-index: 1 !important;
+            }
+            .shield-dropdown-btn {
+                border: none !important;
+                outline: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                width: 24px !important;
+                height: 24px !important;
+                font-size: 16px !important;
+                filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
+            }
+            .shield-dropdown-content {
+                display: none;
+                position: absolute !important;
+                bottom: 100% !important;
+                right: 0;
+                background: #fff !important;
+                border-radius: 4px !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+                min-width: 120px !important;
+            }
+            .shield-dropdown-content.show {
+                display: block !important;
+            }
+            .shield-dropdown-item {
+                padding: 8px 12px !important;
+                font-size: 12px !important;
+                color: #333 !important;
+                cursor: pointer !important;
+                white-space: nowrap !important;
+            }
+            .shield-dropdown-item:hover {
+                background: #f5f5f5 !important;
+            }
+            
+            /* 修改滚动容器为定位上下文 */
+            .scroll-container { /* 根据实际滚动区域类名调整 */
+                position: relative !important;
+                overflow-y: auto !important;
+            }
+        
+            .shield-quick-menu {
+                position: absolute !important;
+                bottom: 8px !important;
+                right: 8px !important;
+                pointer-events: auto !important;
+            }
+            /* 项目容器必须为定位上下文 */
+            .item-list, .item {
+                position: relative !important;
+                overflow: visible !important;
+            }
+
+            /* 限制滚动容器 */
+           .card-list { /* 替换为实际的滚动区域类名 */
+                overflow-y: auto !important;
+                position: relative !important;
+           }
             `);
         }
         // 绑定全局事件
@@ -602,7 +726,7 @@
             });
             // 动态内容监听
             new MutationObserver(() => this.executeShielding())
-               .observe(document.body, { childList: true, subtree: true });
+                .observe(document.body, { childList: true, subtree: true });
         }
         /* ========== 移动端适配 ========== */
         // 切换屏蔽面板的显示状态
@@ -613,14 +737,14 @@
         // 构建面板 UI
         buildPanelUI() {
 
-             const versionInfo = document.createElement('div');
-                versionInfo.style.cssText = `
+            const versionInfo = document.createElement('div');
+            versionInfo.style.cssText = `
                     padding: 12px;
                     text-align: center;
                     font-size: 1.1em;
                     color: rgba(128,128,128,0.5);
                 `;
-                versionInfo.textContent = `电子猫猫工具箱${CURRENT_VERSION} | tg@苏子言`;
+            versionInfo.textContent = `电子猫猫工具箱${CURRENT_VERSION} | tg@苏子言`;
             // 关闭按钮
             const closeBtn = document.createElement('button');
             closeBtn.className = 'panel-close';
@@ -698,19 +822,29 @@
             document.querySelectorAll(CONFIG.PARENT_SELECTOR).forEach(parent => {
                 parent.style.removeProperty('display');
             });
-            this.processed = new WeakSet(); // 清空处理记录
+
             // 重新执行屏蔽
+            this.processed = new WeakSet();
             Object.entries(this.manager).forEach(([key, cfg]) => {
                 document.querySelectorAll(cfg.selector).forEach(el => {
                     if (this.processed.has(el) && !force) return;
-                    const content = el.textContent.trim();
+
+                    // 获取原始文本并清洗
+                    let rawText = el.textContent.trim();
+                    let processedText = cfg.processText ? cfg.processText(rawText) : rawText;
+
+                    // 匹配逻辑
                     const shouldBlock = [...cfg.data].some(word => {
                         switch(cfg.matchType) {
-                            case 'exact': return content === word;
-                            case 'fuzzy': return content.toLowerCase().includes(word.toLowerCase());
-                            case 'regex': return new RegExp(word, 'i').test(content);
+                            case 'exact':
+                                return processedText === word;
+                            case 'fuzzy':
+                                return processedText.toLowerCase().includes(word.toLowerCase());
+                            case 'regex':
+                                return new RegExp(word, 'i').test(processedText);
                         }
                     });
+
                     if (shouldBlock) {
                         const parent = el.closest(CONFIG.PARENT_SELECTOR);
                         parent?.style.setProperty('display', 'none', 'important');
@@ -752,12 +886,20 @@
         handleRemove(key, word) {
             this.manager[key].data.delete(word);
             this.saveData(key);
-            const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`); // 精准定位列表
+            const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`);
             this.refreshList(key, list);
+
+            // 强制刷新所有相关元素
             this.executeShielding(true);
-            this.isPanelOpen = true; // 强制保持面板开启状态
-            this.panel.style.display = 'block'; // 显式维持显示
-        }
+
+            // 显式恢复所有布局的项目
+            document.querySelectorAll('.item-list, .item').forEach(el => {
+                const target = el.querySelector(CONFIG.CATEGORIES[key].selector)?.textContent.trim();
+                if (target === word) {
+                    el.style.display = '';
+                    }
+                });
+            }
         // 构建导入导出工具
         buildImportExport() {
             const tools = document.createElement('div');
@@ -768,15 +910,15 @@
             exportButton.style.border = 'none';
             exportButton.style.background = 'transparent';
             exportButton.innerHTML = `
-            <span style="display: inline-block; 
+            <span style="display: inline-block;
                 padding: 6px 12px;
                 background: #ADD8E6;
                 color: white;
                 border-radius: 4px;
                 cursor: pointer;">
                 导出配置
-            <input type="file" 
-               accept=".json" 
+            <input type="file"
+               accept=".json"
                style="display: none;">
             </span>
             `;
@@ -790,15 +932,15 @@
             importLabel.style.border = 'none';
             importLabel.style.background = 'transparent';
             importLabel.innerHTML = `
-            <span style="display: inline-block; 
+            <span style="display: inline-block;
                 padding: 6px 12px;
                 background: #ADD8E6;
                 color: white;
                 border-radius: 4px;
                 cursor: pointer;">
                 导入配置
-            <input type="file" 
-               accept=".json" 
+            <input type="file"
+               accept=".json"
                style="display: none;">
             </span>
             `;
@@ -829,7 +971,7 @@
             URL.revokeObjectURL(url);
         }
         // 在导入配置成功后，调用 applyCategoryConfig 函数
-         importConfig(inputEvent) {
+        importConfig(inputEvent) {
             const file = inputEvent.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -873,17 +1015,115 @@
         const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
         checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
     });
+
+    class QuickShield {
+        constructor(shieldSystem) {
+            this.shieldSystem = shieldSystem;
+            this.observer = new MutationObserver(() => this.injectButtons());
+            this.observer.observe(document.body, { subtree: true, childList: true });
+            this.injectButtons(); // 初始注入
+        }
+
+        // 创建按钮模板
+        createButtonTemplate() {
+            const container = document.createElement('div');
+            container.className = 'shield-quick-menu';
+            container.innerHTML = `
+            <button class="shield-dropdown-btn">⚙️</button>
+            <div class="shield-dropdown-content">
+                <div class="shield-dropdown-item" data-action="block-item">屏蔽本卡</div>
+                <div class="shield-dropdown-item" data-action="block-author">屏蔽作者</div>
+            </div>
+        `;
+            return container;
+        }
+
+        // 给按钮绑定事件
+        bindButtonEvents(btnContainer, parentEl) {
+            const toggleBtn = btnContainer.querySelector('.shield-dropdown-btn');
+            const dropdown = btnContainer.querySelector('.shield-dropdown-content');
+
+            // 点击按钮切换下拉菜单
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            });
+
+            // 点击选项处理屏蔽
+            dropdown.querySelectorAll('.shield-dropdown-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.remove('show');
+                    this.handleShieldAction(e.target.dataset.action, parentEl);
+                });
+            });
+
+            // 点击页面其他区域关闭下拉
+            document.addEventListener('click', () => {
+                dropdown.classList.remove('show');
+            });
+        }
+
+        // 处理屏蔽动作
+        handleShieldAction(action, parentEl) {
+            const getCleanText = (selector) => {
+                const el = parentEl.querySelector(selector);
+                if (!el) return '';
+                // 直接调用配置中的清洗函数
+                return CONFIG.CATEGORIES[action === 'block-author' ? 'author' : 'title'].processText(el.textContent);
+            };
+
+
+            switch(action) {
+                case 'block-item': {
+                    const title = getCleanText(CONFIG.CATEGORIES.title.selector);
+                    if (title) {
+                        this.shieldSystem.manager.title.data.add(title);
+                        this.shieldSystem.saveData('title');
+                        this.shieldSystem.refreshList('title',
+                            this.shieldSystem.panel.querySelector('[data-key="title"] .shield-list'));
+                        parentEl.style.display = 'none';
+                    }
+                    break;
+                }
+
+                case 'block-author': {
+                    const author = getCleanText(CONFIG.CATEGORIES.author.selector);
+                    if (author) {
+                        this.shieldSystem.manager.author.data.add(author);
+                        this.shieldSystem.saveData('author');
+                        this.shieldSystem.refreshList('author',
+                            this.shieldSystem.panel.querySelector('[data-key="author"] .shield-list'));
+                        this.shieldSystem.executeShielding(true);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 注入按钮到所有项目
+        injectButtons() {
+            document.querySelectorAll('.item-list, .item').forEach(parentEl => {
+                if (parentEl.querySelector('.shield-quick-menu')) return; // 避免重复注入
+
+                const btnContainer = this.createButtonTemplate();
+                parentEl.appendChild(btnContainer);
+                this.bindButtonEvents(btnContainer, parentEl);
+            });
+        }
+    }
+
     /* ==================== 初始化系统 ==================== */
     let initialized = false;
     let updateTimer = null;
-function init() {
-    if (initialized || document.readyState !== 'complete') return;
-    checkForUpdates();
-    if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
-    updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
-    new ShieldSystem().executeShielding();
-    initialized = true;
-}
+    function init() {
+        if (initialized || document.readyState !== 'complete') return;
+        checkForUpdates();
+        if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
+        updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+        new ShieldSystem().executeShielding();
+        initialized = true;
+    }
     // 监听页面加载完成事件
     window.addEventListener('load', init);
     // 监听 DOM 内容加载完成事件
