@@ -681,6 +681,7 @@
                 pointer-events: auto !important;
                 -webkit-transform: translateZ(0); /* 添加 Safari 前缀 */
                 transform: translateZ(0);
+                box-sizing: border-box !important; /* 确保尺寸计算正确 */
             }
             /* 项目容器必须为定位上下文 */
             .item-list, .item {
