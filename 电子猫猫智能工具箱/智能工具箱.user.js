@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         电子猫猫智能工具箱-专业稳定版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.7.0
+// @version      5.7.1
 // @description  支持多维屏蔽、可视化UI管理的智能工具，便捷操作，支持电脑端、安卓端、苹果端
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -38,7 +38,7 @@
     }
     /* ========================== 自动更新模块 ========================== */
     // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.7.0';
+    const CURRENT_VERSION = '5.7.1';
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
     // 检查更新逻辑
@@ -54,6 +54,12 @@
                 try {
                     const latest = JSON.parse(response.responseText);
                     const latestVersion = latest.tag_name;
+
+                    // 检查 latestVersion 是否存在
+                    if (!latestVersion) {
+                        console.error('[更新检查] 无法获取最新版本号，响应数据可能不包含 tag_name 属性');
+                        return;
+                    }
 
                     // 版本号比较（支持x.y.z格式）
                     if (isNewerVersion(latestVersion, CURRENT_VERSION)) {
@@ -1028,6 +1034,7 @@
         createButtonTemplate() {
             const container = document.createElement('div');
             container.className = 'shield-quick-menu';
+            container.style.cssText = `position: absolute; bottom: 8px; right: 8px; z-index: 1; pointer-events: auto; overflow: visible;`;
             container.innerHTML = `
             <button class="shield-dropdown-btn">⚙️</button>
             <div class="shield-dropdown-content">
@@ -1103,13 +1110,18 @@
 
         // 注入按钮到所有项目
         injectButtons() {
-            document.querySelectorAll('.item-list, .item').forEach(parentEl => {
-                if (parentEl.querySelector('.shield-quick-menu')) return; // 避免重复注入
+            const allowedDomains = /(meimoai\d+|sexyai)\.(com|top)/i;
+            if (allowedDomains.test(location.hostname)) {
+                document.querySelectorAll('.item-list, .item').forEach(parentEl => {
+                    // 排除不需要显示齿轮的父容器
+                    if (parentEl.closest('.account-scope, .chat-scope-box, .chat-bottom')) return;
+                    if (parentEl.querySelector('.shield-quick-menu')) return; // 避免重复注入
 
-                const btnContainer = this.createButtonTemplate();
-                parentEl.appendChild(btnContainer);
-                this.bindButtonEvents(btnContainer, parentEl);
-            });
+                    const btnContainer = this.createButtonTemplate();
+                    parentEl.appendChild(btnContainer);
+                    this.bindButtonEvents(btnContainer, parentEl);
+                });
+            }
         }
     }
 
@@ -1118,7 +1130,7 @@
     let updateTimer = null;
     function init() {
         if (initialized || document.readyState !== 'complete') return;
-        checkForUpdates();
+
         if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
         updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
         new ShieldSystem().executeShielding();
