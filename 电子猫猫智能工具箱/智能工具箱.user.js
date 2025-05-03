@@ -22,6 +22,7 @@
 // @grant        unsafeWindow
 // @run-at       document-end
 // @license      MIT
+// @icon         https://postimage.me/images/2025/02/08/63b806f8056dc1522b2ff18bdf4f9a9e.th.jpg
 // ==/UserScript==
 
 // 立即执行函数，创建一个独立的作用域，避免全局变量污染
