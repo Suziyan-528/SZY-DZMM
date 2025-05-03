@@ -598,102 +598,107 @@
                     padding: 4px;
                 }
                 .toggle-switch {
-                position: relative;
-                display: inline-block;
-                width: 40px;
-                height: 18px;
-                background-color: #ccc;
-                border-radius: 9px;
-                transition: background-color 0.3s;
-            }
+                    position: relative;
+                    display: inline-block;
+                    width: 40px;
+                    height: 18px;
+                    background-color: #ccc;
+                    border-radius: 9px;
+                    transition: background-color 0.3s;
+                }
 
-            .toggle-slider {
-                position: absolute;
-                top: 1.1px;
-                left: 1.1px;
-                width: 16px;
-                height: 16px;
-                background-color: white;
-                border-radius: 50%;
-                transition: transform 0.3s;
-            }
+                .toggle-slider {
+                    position: absolute;
+                    top: 1.1px;
+                    left: 1.1px;
+                    width: 16px;
+                    height: 16px;
+                    background-color: white;
+                    border-radius: 50%;
+                    transition: transform 0.3s;
+                }
 
-            input:checked + .toggle-switch {
-                background-color: rgb(23, 170, 253);
-            }
+                input:checked + .toggle-switch {
+                    background-color: rgb(23, 170, 253);
+                }
 
-            input:checked + .toggle-switch .toggle-slider {
-                transform: translateX(21px);
-            }
-            
-            
-            .shield-quick-menu {
-                position: absolute !important;
-                bottom: 8px !important;
-                right: 8px !important;
-                z-index: 1 !important;
-            }
-            .shield-dropdown-btn {
-                border: none !important;
-                outline: none !important;
-                box-shadow: none !important;
-                background: transparent !important;
-                width: 24px !important;
-                height: 24px !important;
-                font-size: 16px !important;
-                filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
-            }
-            .shield-dropdown-content {
-                display: none;
-                position: absolute !important;
-                bottom: 100% !important;
-                right: 0;
-                background: #fff !important;
-                border-radius: 4px !important;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-                min-width: 120px !important;
-            }
-            .shield-dropdown-content.show {
-                display: block !important;
-            }
-            .shield-dropdown-item {
-                padding: 8px 12px !important;
-                font-size: 12px !important;
-                color: #333 !important;
-                cursor: pointer !important;
-                white-space: nowrap !important;
-            }
-            .shield-dropdown-item:hover {
-                background: #f5f5f5 !important;
-            }
-            
-            /* 修改滚动容器为定位上下文 */
-            .scroll-container { /* 根据实际滚动区域类名调整 */
-                position: relative !important;
-                overflow-y: auto !important;
-            }
-        
-            .shield-quick-menu {
-                position: absolute !important;
-                bottom: 8px !important;
-                right: 8px !important;
-                z-index: 1 !important;
-                pointer-events: auto !important;
-                -webkit-transform: translateZ(0); /* 添加 Safari 前缀 */
-                transform: translateZ(0);
-                box-sizing: border-box !important; /* 确保尺寸计算正确 */
-            }
-            /* 项目容器必须为定位上下文 */
-            .item-list, .item {
-                position: relative !important;
-                overflow: visible !important;
-            }
+                input:checked + .toggle-switch .toggle-slider {
+                    transform: translateX(21px);
+                }
 
-            /* 限制滚动容器 */
-           .card-list { /* 替换为实际的滚动区域类名 */
-                overflow-y: auto !important;
-                position: relative !important;
-           }
+
+                .shield-quick-menu {
+                    position: absolute !important;
+                    bottom: 8px !important;
+                    right: 8px !important;
+                    z-index: 1 !important;
+                }
+                .shield-dropdown-btn {
+                    border: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    background: transparent !important;
+                    width: 24px !important;
+                    height: 24px !important;
+                    font-size: 16px !important;
+                    filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
+                }
+                .shield-dropdown-content {
+                    display: none;
+                    position: absolute !important;
+                    bottom: 100% !important;
+                    right: 0;
+                    background: #fff !important;
+                    border-radius: 4px !important;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+                    min-width: 120px !important;
+                }
+                .shield-dropdown-content.show {
+                    display: block !important;
+                }
+                .shield-dropdown-item {
+                    padding: 8px 12px !important;
+                    font-size: 12px !important;
+                    color: #333 !important;
+                    cursor: pointer !important;
+                    white-space: nowrap !important;
+                }
+                .shield-dropdown-item:hover {
+                    background: #f5f5f5 !important;
+                }
+
+                /* 修改滚动容器为定位上下文 */
+                .scroll-container { /* 根据实际滚动区域类名调整 */
+                    position: relative !important;
+                    overflow-y: auto !important;
+                }
+
+                .shield-quick-menu {
+                    position: absolute !important;
+                    bottom: 8px !important;
+                    right: 8px !important;
+                    z-index: 1 !important;
+                    pointer-events: auto !important;
+                    -webkit-transform: translateZ(0); /* 添加 Safari 前缀 */
+                    transform: translateZ(0);
+                    box-sizing: border-box !important; /* 确保尺寸计算正确 */
+                }
+                /* 项目容器必须为定位上下文 */
+                .item-list, .item {
+                    position: relative !important;
+                    overflow: visible !important;
+                }
+
+                /* 限制滚动容器 */
+               .card-list { /* 替换为实际的滚动区域类名 */
+                    overflow-y: auto !important;
+                    position: relative !important;
+               }
+               @media (max-width: 767px) {
+                    .shield-dropdown-btn {
+                        width: 36px !important; /* 移动端宽度 */
+                    }
+                }
             `);
         }
         // 绑定全局事件
