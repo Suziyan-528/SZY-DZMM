@@ -1345,9 +1345,6 @@
         }
 
         addQuickShieldMenus() {
-            // 检查是否为移动端，移动端不显示齿轮菜单
-            if (isMobile) return;
-
             // 选择所有需要添加快速屏蔽菜单的项目
             const items = document.querySelectorAll(CONFIG.PARENT_SELECTOR);
 
