@@ -1,3 +1,4 @@
+// 世界模拟器.js
 const worldBackgrounds = [
   { 
     value: "modern", 
