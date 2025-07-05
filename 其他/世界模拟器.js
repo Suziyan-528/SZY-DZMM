@@ -1,4 +1,5 @@
 // 世界模拟器.js
+// 数据配置
 const worldBackgrounds = [
   { 
     value: "modern", 
