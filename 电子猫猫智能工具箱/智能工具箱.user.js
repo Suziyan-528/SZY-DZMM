@@ -1,14 +1,16 @@
 // ==UserScript==
-// @name         电子猫猫智能工具箱-专业稳定版
+// @name         猫猫岛智能工具箱-测试版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.8.1
-// @description  支持多维屏蔽、可视化UI管理的智能工具，便捷操作，支持电脑端、安卓端、苹果端
+// @version      5.9.0
+// @description  移除未试装的功能，新增无图模式、隐藏评分功能
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
 // @match        *://*.sexyai.top/*
 // @match        *://*.meimoai*.com/*
 // @match        *://*.meimodao.*/*
 // @match        *://*.meimodao.com/*
+// @match        *://*.meimoai8.com/*
+// @match        *://*.meimoai7.com/*
 // @connect      github.com
 // @connect      api.github.com
 // @grant        GM_setValue
@@ -17,6 +19,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
+// @grant        GM_info
 // @grant        unsafeWindow
 // @run-at       document-end
 // @license      MIT
@@ -47,8 +50,7 @@
             console.log('[屏蔽系统] 非目标域名，退出执行');
             return false;
         }
-        // 检查路径（可选）
-        // 例如，如果需要特定路径才能运行脚本
+        // 检查路径
         if (location.pathname === '' && location.hash === '#/') {
             console.log('[屏蔽系统] 匹配特定路径: #/');
         }
@@ -59,8 +61,8 @@
         return;
     }
     /* ========================== 自动更新模块 ========================== */
-    // 获取当前脚本版本（从元数据解析，需与@version一致）
-    const CURRENT_VERSION = '5.8.1';
+    // 获取当前脚本版本（从元数据自动读取）
+    const CURRENT_VERSION = GM_info.script.version;
     const GITHUB_REPO = 'Suziyan-528/SZY-DZMM';
     const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时检查一次
     // 检查更新逻辑
@@ -135,6 +137,7 @@
         }
     }
     /* ========================== 基础配置系统 ========================== */
+    //基础配置对象
     const CONFIG = {
         // 分类配置 (可自由增减)
         CATEGORIES: {
@@ -182,7 +185,7 @@
         DEBOUNCE: 300
         // 防抖时间，暂未使用
     };
-    /* ========== 通用通知函数 ========== */
+    //通用通知函数
     function showNotification(message, duration = 1500) {
         if (!document.body) return;
         const notification = document.createElement('div');
@@ -215,7 +218,7 @@
             }, 300);
         }, duration); // 默认持续时间 1500ms
     }
-    // 导出配置
+    //导出配置
     function exportConfig() {
         const exportData = {
             categories: CONFIG.CATEGORIES,
@@ -230,7 +233,7 @@
         a.click();
         URL.revokeObjectURL(url);
     }
-    // 更新分类配置后，重新执行屏蔽逻辑
+    //更新分类配置后，重新执行屏蔽逻辑
     function applyCategoryConfig() {
         Object.values(CONFIG.CATEGORIES).forEach(category => {
             const keywords = GM_getValue(category.storageKey, []);
@@ -254,20 +257,23 @@
         });
     }
     /* ========================== 标签屏蔽系统 ========================== */
-    // 修复标签屏蔽面板注入问题
     class TagShield {
         constructor() {
             // 配置存储键名
             this.STORAGE_KEYS = {
                 authorTag: 'HIDE_AUTHOR_TAG',
                 usageTag: 'HIDE_USAGE_TAG',
-                originTag: 'HIDE_ORIGIN_TAG'
+                originTag: 'HIDE_ORIGIN_TAG',
+                scoreTag: 'HIDE_SCORE_TAG',
+                imageTag: 'HIDE_IMAGE_TAG'
             };
             // 初始化开关状态
             this.state = {
                 hideAuthorTag: GM_getValue(this.STORAGE_KEYS.authorTag, false),
                 hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false),
-                hideOriginTag: GM_getValue(this.STORAGE_KEYS.originTag, false)
+                hideOriginTag: GM_getValue(this.STORAGE_KEYS.originTag, false),
+                hideScoreTag: GM_getValue(this.STORAGE_KEYS.scoreTag, false),
+                hideImageTag: GM_getValue(this.STORAGE_KEYS.imageTag, false)
             };
             // 初始化注入标记
             this.injected = false;
@@ -275,10 +281,8 @@
             this.panelId = 'tag-shield-panel';
             // 折叠容器ID
             this.collapsibleId = 'tag-shield-collapsible';
-
             // 如果已有面板则注入UI
             this.tryInjectUI();
-
             // 使用单次检查的MutationObserver
             this.observer = new MutationObserver(() => {
                 this.tryInjectUI();
@@ -290,31 +294,28 @@
                 characterData: false
             });
         }
-
         // 尝试注入UI，增加了更严格的检查
         tryInjectUI() {
             // 如果已经注入或面板不存在则返回
             if (this.injected || !document.getElementById('smart-shield-panel')) return;
-
             // 检查是否存在标签屏蔽面板
             const existingPanel = document.getElementById(this.panelId);
             if (existingPanel) {
                 this.injected = true;
                 return;
             }
-
             // 执行注入
             this.injectUI();
         }
-
         // 执行标签屏蔽
         execute() {
             this.toggleTag('.item-author', this.state.hideAuthorTag);
             this.toggleTag('.item-usage', this.state.hideUsageTag);
+            this.toggleTag('.item-score', this.state.hideScoreTag);
             this.toggleOriginTag(this.state.hideOriginTag); // 新增屏蔽逻辑
+            this.toggleImageTags(this.state.hideImageTag); // 屏蔽图片标签
             this.injectStyle(); // 注入样式
         }
-
         // 通用标签显示/隐藏控制
         toggleTag(selector, shouldHide) {
             document.querySelectorAll(selector).forEach(el => {
@@ -326,7 +327,6 @@
                     el.dataset.originalOpacity = el.style.opacity || '1';
                     el.dataset.originalFlex = el.style.flex || '';
                     el.dataset.originalMargin = el.style.margin || '';
-
                     // 保持布局占位
                     el.style.setProperty('visibility', 'hidden', 'important');
                     el.style.setProperty('opacity', '0', 'important');
@@ -335,17 +335,53 @@
                     el.style.setProperty('flex', '0 0 auto', 'important');  // 防止flex压缩空间
                     el.style.setProperty('margin', '0', 'important');         // 消除边距影响
                 } else {
-                    // 恢复原始样式
-                    el.style.setProperty('visibility', el.dataset.originalVisibility);
-                    el.style.setProperty('opacity', el.dataset.originalOpacity);
-                    el.style.setProperty('width', el.dataset.originalWidth);
-                    el.style.setProperty('height', el.dataset.originalHeight);
-                    el.style.setProperty('flex', el.dataset.originalFlex);
-                    el.style.setProperty('margin', el.dataset.originalMargin);
+                    // 增强的恢复逻辑，确保样式完全清除
+                    // 移除所有内联样式
+                    el.style.visibility = '';
+                    el.style.opacity = '';
+                    el.style.width = '';
+                    el.style.height = '';
+                    el.style.flex = '';
+                    el.style.margin = '';
+                    
+                    // 对于图片元素，额外确保重要样式被移除
+                    if (['.item-img', '.page-background-img', '.header-role-img'].includes(selector)) {
+                        // 强制清除important标记的样式
+                        el.removeAttribute('style');
+                        // 重新应用原始内联样式（如果有）
+                        if (el.dataset.originalWidth !== 'auto' || 
+                            el.dataset.originalHeight !== 'auto' ||
+                            el.dataset.originalVisibility !== 'visible' ||
+                            el.dataset.originalOpacity !== '1' ||
+                            el.dataset.originalFlex ||
+                            el.dataset.originalMargin) {
+                            el.style.visibility = el.dataset.originalVisibility;
+                            el.style.opacity = el.dataset.originalOpacity;
+                            el.style.width = el.dataset.originalWidth;
+                            el.style.height = el.dataset.originalHeight;
+                            el.style.flex = el.dataset.originalFlex;
+                            el.style.margin = el.dataset.originalMargin;
+                        }
+                    } else {
+                        // 非图片元素使用setProperty恢复
+                        el.style.setProperty('visibility', el.dataset.originalVisibility, '');
+                        el.style.setProperty('opacity', el.dataset.originalOpacity, '');
+                        el.style.setProperty('width', el.dataset.originalWidth, '');
+                        el.style.setProperty('height', el.dataset.originalHeight, '');
+                        el.style.setProperty('flex', el.dataset.originalFlex, '');
+                        el.style.setProperty('margin', el.dataset.originalMargin, '');
+                    }
+                    
+                    // 清除保存的数据，以便下次能重新捕获最新状态
+                    delete el.dataset.originalWidth;
+                    delete el.dataset.originalHeight;
+                    delete el.dataset.originalVisibility;
+                    delete el.dataset.originalOpacity;
+                    delete el.dataset.originalFlex;
+                    delete el.dataset.originalMargin;
                 }
             });
         }
-
         toggleOriginTag(shouldHide) {
             document.querySelectorAll('.item-origin-type').forEach(originEl => {
                 if (originEl.textContent.includes('转载')) {
@@ -372,20 +408,106 @@
                 }
             });
         }
-
+        // 屏蔽图片标签
+        toggleImageTags(shouldHide) {
+            // 屏蔽 item-img, header-role-img 标签
+            const imageSelectors = ['.item-img', '.header-role-img'];
+            imageSelectors.forEach(selector => {
+                this.toggleTag(selector, shouldHide);
+            });
+            
+            // 屏蔽 page-background-img 中的背景图片
+            document.querySelectorAll('.page-background-img').forEach(box => {
+                if (shouldHide) {
+                    // 保存原始背景样式
+                    if (!box.dataset.originalBackground) {
+                        // 只有在未保存过的情况下才保存，避免覆盖之前保存的值
+                        box.dataset.originalBackground = box.style.background || '';
+                        box.dataset.originalBackgroundImage = getComputedStyle(box).backgroundImage;
+                    }
+                    // 移除背景图片
+                    box.style.setProperty('background-image', 'none', 'important');
+                } else {
+                    // 增强的背景图片恢复逻辑
+                    // 先清除所有可能的重要样式
+                    box.style.removeProperty('background-image');
+                    
+                    // 恢复原始背景样式
+                    if (box.dataset.originalBackground) {
+                        box.style.background = box.dataset.originalBackground;
+                    }
+                    if (box.dataset.originalBackgroundImage && box.dataset.originalBackgroundImage !== 'none') {
+                        // 强制设置背景图片，不使用important标记
+                        box.style.backgroundImage = box.dataset.originalBackgroundImage;
+                    }
+                    
+                    // 对于一些特殊情况，直接重置为默认状态
+                    if (box.dataset.originalBackgroundImage === 'none') {
+                        box.style.backgroundImage = 'none';
+                    }
+                    
+                    // 清除保存的数据，以便下次能重新捕获最新状态
+                    delete box.dataset.originalBackground;
+                    delete box.dataset.originalBackgroundImage;
+                }
+            });
+            
+            // 屏蔽 chat-scope-box 中的背景图片
+            document.querySelectorAll('.chat-scope-box').forEach(box => {
+                if (shouldHide) {
+                    // 保存原始背景样式（包括backgroundImage）
+                    if (!box.dataset.originalBackground) {
+                        // 只有在未保存过的情况下才保存，避免覆盖之前保存的值
+                        box.dataset.originalBackground = box.style.background || '';
+                        box.dataset.originalBackgroundImage = getComputedStyle(box).backgroundImage;
+                    }
+                    // 移除背景图片
+                    box.style.setProperty('background-image', 'none', 'important');
+                } else {
+                    // 增强的背景图片恢复逻辑
+                    // 先清除所有可能的重要样式
+                    box.style.removeProperty('background-image');
+                    
+                    // 恢复原始背景样式
+                    if (box.dataset.originalBackground) {
+                        box.style.background = box.dataset.originalBackground;
+                    }
+                    if (box.dataset.originalBackgroundImage && box.dataset.originalBackgroundImage !== 'none') {
+                        // 强制设置背景图片，不使用important标记
+                        box.style.backgroundImage = box.dataset.originalBackgroundImage;
+                    }
+                    
+                    // 对于一些特殊情况，直接重置为默认状态
+                    if (box.dataset.originalBackgroundImage === 'none') {
+                        box.style.backgroundImage = 'none';
+                    }
+                    
+                    // 清除保存的数据，以便下次能重新捕获最新状态
+                    delete box.dataset.originalBackground;
+                    delete box.dataset.originalBackgroundImage;
+                }
+            });
+        }
+        
         // 新增样式注入
         injectStyle() {
             GM_addStyle(`
             /* 为被隐藏元素添加占位保护 */
             .item-usage[style*="hidden"],
-            .item-author[style*="hidden"] {
+            .item-author[style*="hidden"],
+            .item-score[style*="hidden"],
+            .item-img[style*="hidden"],
+            .header-role-img[style*="hidden"] {
                 pointer-events: none !important;
                 user-select: none !important;
                 position: relative !important;
             }
             /* 添加伪元素占位提示 */
             .item-usage[style*="hidden"]::after,
-            .item-author[style*="hidden"]::after {
+            .item-author[style*="hidden"]::after,
+            .item-score[style*="hidden"]::after,
+            .item-img[style*="hidden"]::after,
+            .header-role-img[style*="hidden"]::after {
                 content: "[已隐藏]";
                 position: absolute;
                 left: 50%;
@@ -397,19 +519,16 @@
             }
         `);
         }
-
         // 在原有面板中注入新UI
         injectUI() {
             if (this.injected) return;
             const panel = document.getElementById('smart-shield-panel');
             if (!panel) return;
-
             // 检查容器是否存在
             if (panel.querySelector(`#${this.collapsibleId}`)) {
                 this.injected = true;
                 return;
             }
-
             // 创建标签屏蔽面板容器
             const container = document.createElement('div');
             container.id = this.collapsibleId;
@@ -442,53 +561,76 @@
                     </span>
                     <span>隐藏所有转载项目</span>
                 </label>
-            </div></div>
-            
-        `;
-
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" ${this.state.hideScoreTag ? 'checked' : ''} id="toggle-score-tag" style="display: none;">
+                    <span class="toggle-switch">
+                        <span class="toggle-slider"></span>
+                    </span>
+                    <span>隐藏所有项目评分</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" ${this.state.hideImageTag ? 'checked' : ''} id="toggle-image-tag" style="display: none;">
+                    <span class="toggle-switch">
+                        <span class="toggle-slider"></span>
+                    </span>
+                    <div>
+                    <span>隐藏所有图片</span><br>
+                    <p style="color: gray; font-style: italic; font-size: 0.65em;">tips:无图模式防社死，也许还会加快网页的加载速度？</p></div>
+                </label>
+            </div></div>            
+            `;
             // 为折叠/展开添加事件监听
             const header = container.querySelector('.collapsible-header');
             const content = container.querySelector('.collapsible-content');
             const arrow = container.querySelector('.arrow');
-
             header.addEventListener('click', () => {
                 const isHidden = content.style.display === 'none';
                 content.style.display = isHidden ? 'block' : 'none';
                 arrow.textContent = isHidden ? '▼' : '▶';
             });
-
             // 事件绑定
             container.querySelector('#toggle-author-tag').addEventListener('change', (e) => {
                 this.state.hideAuthorTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.authorTag, e.target.checked);
                 this.execute();
             });
-
             container.querySelector('#toggle-usage-tag').addEventListener('change', (e) => {
                 this.state.hideUsageTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.usageTag, e.target.checked);
                 this.execute();
             });
-
             container.querySelector('#toggle-origin-tag').addEventListener('change', (e) => {
                 this.state.hideOriginTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.originTag, e.target.checked);
                 this.execute();
             });
-
-            // 插入到版本信息下方
+            container.querySelector('#toggle-score-tag').addEventListener('change', (e) => {
+                this.state.hideScoreTag = e.target.checked;
+                GM_setValue(this.STORAGE_KEYS.scoreTag, e.target.checked);
+                this.execute();
+            });
+            container.querySelector('#toggle-image-tag').addEventListener('change', (e) => {
+                this.state.hideImageTag = e.target.checked;
+                GM_setValue(this.STORAGE_KEYS.imageTag, e.target.checked);
+                this.execute();
+            });
+            // 插入到标题下方，基础屏蔽容器的上方
+            // 先查找版本信息和滚动容器
             const versionInfo = panel.querySelector('div:first-child');
-            if (versionInfo) {
+            const scrollContainer = panel.querySelector('.panel-scroll-container');
+            // 然后在滚动容器的第一个子元素前插入
+            if (scrollContainer && scrollContainer.firstChild) {
+                scrollContainer.insertBefore(container, scrollContainer.firstChild);
+            } else if (versionInfo) {
+                // 备用方案：插入到版本信息下方
                 versionInfo.after(container);
             } else {
                 // 备用方案
                 panel.insertBefore(container, panel.firstChild);
             }
-
             this.injectToggleStyle();
             this.injected = true;
         }
-
         // 注入开关样式
         injectToggleStyle() {
             GM_addStyle(`
@@ -524,8 +666,273 @@
         }
     }
 
+    /* ========================== 拓展功能系统 =========================== */
+    class ChatMultiFunction {
+            constructor(shieldSystem) {
+                this.shieldSystem = shieldSystem;
+                this.injected = false;
+                this.collapsibleId = 'chat-multi-function-panel';
+                this.state = {
+                    injectQuickShield: false // 控制是否注入快捷屏蔽菜单
+                };
+                this.STORAGE_KEYS = {
+                    injectQuickShield: 'CHAT_INJECT_QUICK_SHIELD'
+                };
+                this.loadState(); // 加载存储的状态
+            }
 
-    /* ========================== 核心系统 =========================== */
+            loadState() {
+                this.state.injectQuickShield = GM_getValue(this.STORAGE_KEYS.injectQuickShield, false);
+            }
+
+
+
+            initCollapsibleContainerUI() {
+                if (this.injected) return;
+                const panel = document.getElementById('smart-shield-panel');
+                if (!panel) return;
+
+                if (panel.querySelector(`#${this.collapsibleId}`)) {
+                    this.injected = true;
+                    return;
+                }
+
+                const container = document.createElement('div');
+                container.id = this.collapsibleId;
+                container.className = 'collapsible-container';
+
+                container.innerHTML = `
+                    <div class="collapsible-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 8px; cursor: pointer;">
+                        <span>🛠️ 拓展功能</span>
+                        <span class="arrow">▶</span>
+                    </div>
+                    <div class="collapsible-content" style="display:none">
+                        <div style="display: flex; flex-direction: column; gap:10px;padding:10px;">
+                            <p style="font-size: 12px; color: #888;">提示：以下功能可能影响页面结构，请谨慎使用。</p>
+        
+                            <!-- 注入快捷屏蔽菜单 -->
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="toggle-inject-quick-shield" ${this.state.injectQuickShield ? 'checked' : ''} style="display: none;">
+                                <span class="toggle-switch">
+                                    <span class="toggle-slider"></span>
+                                </span>
+                                <span>注入快捷屏蔽菜单</span>
+                            </label>
+        
+
+                        </div>
+                    </div>
+                `;
+
+                // 添加到面板中
+                    // 获取所有折叠容器
+    const collapsibleContainers = panel.querySelectorAll('.collapsible-container');
+    // 定位到第二个折叠容器（标签屏蔽容器）
+    const tagShieldContainer = collapsibleContainers[1];
+    // 找到导入导出工具
+    const importExportTools = panel.querySelector('.shield-import-export-tools');
+                 // 插入逻辑：
+    if (tagShieldContainer) {
+        // 在标签屏蔽容器后插入拓展功能容器
+        tagShieldContainer.after(container);
+        // 如果存在导入导出工具，确保其在拓展功能容器之后
+        if (importExportTools) {
+            container.after(importExportTools);
+        }
+    } else {
+        // 备用方案：插入到面板末尾（应尽量避免）
+        panel.appendChild(container);
+    }
+
+                // 折叠展开逻辑
+                const header = container.querySelector('.collapsible-header');
+                const content = container.querySelector('.collapsible-content');
+                const arrow = container.querySelector('.arrow');
+                header.addEventListener('click', () => {
+                    const isHidden = content.style.display === 'none';
+                    content.style.display = isHidden ? 'block' : 'none';
+                    arrow.textContent = isHidden ? '▼' : '▶';
+                });
+
+                // 切换事件绑定
+                const quickToggle = container.querySelector('#toggle-inject-quick-shield');
+                // 切换事件绑定部分修改如下
+                quickToggle.addEventListener('change', e => {
+                    const isChecked = e.target.checked;
+                    GM_setValue(this.STORAGE_KEYS.injectQuickShield, isChecked);
+                    this.state.injectQuickShield = isChecked;
+
+                    if (isChecked) {
+                        // 延迟初始化 QuickShield 实例
+                        this.enableQuickShield();
+                    } else {
+                        // 如果已存在实例，则销毁它
+                        this.disableQuickShield();
+                    }
+                });
+
+                this.injected = true;
+
+                // 如果之前已启用，则初始化功能
+                if (this.state.injectQuickShield) {
+                    this.enableQuickShield();
+                }
+
+                this.injectStyles();
+            }
+
+            enableQuickShield() {
+                if (!this.quickShieldInstance) {
+                    this.quickShieldInstance = new QuickShield(this.shieldSystem);
+                }
+            }
+
+            disableQuickShield() {
+                if (this.quickShieldInstance && this.quickShieldInstance.observer) {
+                    this.quickShieldInstance.observer.disconnect();
+                    this.quickShieldInstance = null;
+                }
+
+                // 移除所有 .shield-quick-menu 元素
+                document.querySelectorAll('.shield-quick-menu').forEach(el => el.remove());
+            }
+
+
+
+
+            injectStyles() {
+                GM_addStyle(`
+                    .toggle-switch {
+                        position: relative;
+                        display: inline-block;
+                        width: 40px;
+                        height: 18px;
+                        background-color: #ccc;
+                        border-radius: 9px;
+                        transition: background-color 0.3s;
+                    }
+                    .toggle-slider {
+                        position: absolute;
+                        top: 1.1px;
+                        left: 1.1px;
+                        width: 16px;
+                        height: 16px;
+                        background-color: white;
+                        border-radius: 50%;
+                        transition: transform 0.3s;
+                    }
+                    input:checked + .toggle-switch {
+                        background-color: rgb(23, 170, 253);
+                    }
+                    input:checked + .toggle-switch .toggle-slider {
+                        transform: translateX(21px);
+                    }
+                `);
+            }
+        }
+
+
+    /* ========================== 快速屏蔽系统 ========================== */
+    class QuickShield {
+        constructor(shieldSystem) {
+            this.shieldSystem = shieldSystem;
+            this.init();
+        }
+        init() {
+            this.observer = new MutationObserver((mutations) => {
+                mutations.forEach(mutation => {
+                    if (mutation.addedNodes.length) {
+                        this.addQuickShieldMenus();
+                        setTimeout(() => this.shieldSystem.executeShielding(true), 100);
+                    }
+                });
+            });
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            this.addQuickShieldMenus();
+        }
+        addQuickShieldMenus() {
+            // 选择所有需要添加快速屏蔽菜单的项目
+            const items = document.querySelectorAll(CONFIG.PARENT_SELECTOR);
+            items.forEach(item => {
+                // 避免重复添加
+                if (this.isExcludedContainer(item)) return;
+                if (item.querySelector('.shield-quick-menu')) return;
+                // 查找项目中的作者、标题和描述元素
+                const authorEl = item.querySelector(CONFIG.CATEGORIES.author.selector);
+                const titleEl = item.querySelector(CONFIG.CATEGORIES.title.selector);
+                const descEl = item.querySelector(CONFIG.CATEGORIES.description.selector);
+                // 创建快速屏蔽菜单
+                const menu = document.createElement('div');
+                menu.className = 'shield-quick-menu';
+                menu.innerHTML = `
+                <button class="shield-dropdown-btn">⚙️</button>
+                <div class="shield-dropdown-content">
+                    ${authorEl ? `<div class="shield-dropdown-item" data-type="author">屏蔽作者</div>` : ''}
+                    ${titleEl ? `<div class="shield-dropdown-item" data-type="title">屏蔽本卡</div>` : ''}
+                </div>
+            `;
+                item.appendChild(menu);
+                // 添加事件监听
+                const dropdownBtn = menu.querySelector('.shield-dropdown-btn');
+                const dropdownContent = menu.querySelector('.shield-dropdown-content');
+                dropdownBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownContent.classList.toggle('show');
+                });
+                // 为菜单项添加点击事件
+                menu.querySelectorAll('.shield-dropdown-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        dropdownContent.classList.remove('show');
+                        const type = item.dataset.type;
+                        let text;
+                        if (type === 'author' && authorEl) {
+                            text = CONFIG.CATEGORIES.author.processText(authorEl.textContent);
+                        } else if (type === 'title' && titleEl) {
+                            text = CONFIG.CATEGORIES.title.processText(titleEl.textContent);
+                        }
+
+                        if (text) {
+                            this.addToShieldList(type, text);
+                        }
+                    });
+                });
+                // 点击其他地方关闭菜单
+                document.addEventListener('click', () => {
+                    dropdownContent.classList.remove('show');
+                });
+            });
+        }
+        // 添加关键词到屏蔽列表并立即应用
+        addToShieldList(type, keyword) {
+            if (!this.shieldSystem.manager[type]) return;
+            // 添加关键词到管理器
+            this.shieldSystem.manager[type].data.add(keyword);
+            // 保存到本地存储
+            this.shieldSystem.saveData(type);
+            // 刷新关键词列表显示
+            this.shieldSystem.renderKeywordsList(type);
+            // 立即执行屏蔽逻辑
+            this.shieldSystem.executeShielding(true);
+            // 显示成功提示
+            window.showNotification(`已屏蔽: ${keyword}`, 1500);
+            window.showNotification(`已添加屏蔽关键词: ${keyword}`, 1500);
+        }
+        //禁止以下容器创建屏蔽菜单
+        isExcludedContainer(element) {
+            // 排除容器选择器
+            const excludedSelectors = [
+                '.chat-scope-box',
+                '.chat-bottom',
+                '.shortcut-button'
+            ];
+            return excludedSelectors.some(selector => element.closest(selector));
+        }
+    }
+    /* ============================ 核心系统 ============================ */
     // 防抖函数，用于避免用户频繁操作触发保存数据
     function debounce(func, delay) {
         let timer;
@@ -538,82 +945,124 @@
             timer = setTimeout(() => func.apply(context, args), delay);
         };
     }
+    // 屏蔽系统类，用于管理屏蔽关键词和执行屏蔽逻辑
     class ShieldSystem {
+        //屏蔽系统类的构造函数，用于初始化屏蔽系统的各项功能和状态。
         constructor() {
-            // 用于记录已经处理过的元素，避免重复处理
+            // 用于记录已经处理过的元素，避免重复处理。WeakSet 会自动回收不再使用的元素引用
             this.processed = new WeakSet();
-            // 初始化管理器，加载存储的屏蔽关键词
+            // 初始化管理器，从存储中加载各个分类的屏蔽关键词
             this.manager = this.initManager();
-            // 标记屏蔽面板是否打开
+            // 标记屏蔽面板是否处于打开状态，初始状态为关闭
             this.isPanelOpen = false;
-            // 初始化屏蔽面板
+            // 初始化屏蔽面板，创建面板元素、应用样式并构建用户界面
             this.initPanel();
-            // 绑定全局事件，如快捷键监听、点击关闭等
+            // 绑定全局事件，包括快捷键监听、点击面板外部关闭面板、油猴菜单命令等
             this.bindGlobalEvents();
-            // 如果是移动端，创建移动端触发按钮
+            // 如果当前设备是移动端，创建移动端触发按钮，用于显示和隐藏屏蔽面板
             if (isMobile) {
                 this.createMobileTrigger();
             }
+            // 延迟 1 秒后检查脚本是否有更新
             setTimeout(() => checkForUpdates(), 1000);
-            // 新增：初始化标签屏蔽系统
+            // 新增：初始化标签屏蔽系统，用于处理标签相关的屏蔽逻辑
             this.tagShield = new TagShield();
-            // 新增快速屏蔽功能
-            this.quickShield = new QuickShield(this);
+            // 不再立即初始化 QuickShield
+            this.quickShield = null;
+            // 新增聊天页拓展功能模块
+            this.chatMultiFunction = new ChatMultiFunction(this);
+            this.chatMultiFunction.initCollapsibleContainerUI();
+            // 创建一个 MutationObserver 实例，监听 DOM 变化
             new MutationObserver((mutations) => {
+                // 遍历所有发生的 DOM 变化
                 mutations.forEach(mutation => {
+                    // 如果有新节点添加到 DOM 中
                     if (mutation.addedNodes.length) {
+                        // 强制重新执行屏蔽逻辑，确保新节点也被检查
                         this.executeShielding(true);
                     }
                 });
             }).observe(document.body, {
+                // 监听子节点的添加或移除
                 childList: true,
+                // 监听所有后代节点的变化
                 subtree: true,
-                attributes: true, // 监听属性变化（如 class 变更）
+                // 监听属性变化（如 class 变更）
+                attributes: true,
+                // 只监听 class 属性的变化
                 attributeFilter: ['class']
             });
-            // 修改执行屏蔽逻辑
+            // 保存原始的 executeShielding 方法引用
             this.originalExecuteShielding = this.executeShielding.bind(this);
+            // 重写 executeShielding 方法，在执行原始屏蔽逻辑后，执行标签屏蔽逻辑
             this.executeShielding = (force = false) => {
+                // 执行原始的屏蔽逻辑
                 this.originalExecuteShielding(force);
-                this.tagShield.execute(); // 执行新屏蔽逻辑
+                // 执行标签屏蔽逻辑
+                this.tagShield.execute();
             }
+            // 根据设备类型选择不同的 DOM 监听方式
             if (isMobile) {
-                // 移动端使用节流的MutationObserver
+                // 移动端使用节流的 MutationObserver，减少性能开销
                 this.initMobileObserver();
             } else {
-                // 桌面端使用完整的MutationObserver
+                // 桌面端使用完整的 MutationObserver，实时监听 DOM 变化
                 new MutationObserver((mutations) => {
+                    // 遍历所有发生的 DOM 变化
                     mutations.forEach(mutation => {
+                        // 如果有新节点添加到 DOM 中
                         if (mutation.addedNodes.length) {
+                            // 强制重新执行屏蔽逻辑
                             this.executeShielding(true);
                         }
                     });
                 }).observe(document.body, {
+                    // 监听子节点的添加或移除
                     childList: true,
+                    // 监听所有后代节点的变化
                     subtree: true,
+                    // 监听属性变化
                     attributes: true,
+                    // 只监听 class 属性的变化
                     attributeFilter: ['class']
                 });
             }
-            // 首次执行
+            // 首次执行标签屏蔽逻辑
             this.tagShield.execute();
         }
+        // 如果需要手动触发启用 quickShield
+        enableQuickShield() {
+            if (!this.quickShield) {
+                this.quickShield = new QuickShield(this);
+            }
+        }
+        disableQuickShield() {
+            if (this.quickShield && this.quickShield.observer) {
+                this.quickShield.observer.disconnect();
+                this.quickShield = null;
+            }
+        }
+        //初始化移动端的MutationObserver并设置节流，用于监听DOM变化并执行屏蔽逻辑
         initMobileObserver() {
+            // 用于存储定时器 ID，方便后续清除定时器
             let timer = null;
-            const throttleTime = 500; // 节流时间，毫秒
-
+            // 节流时间，单位为毫秒，即两次执行屏蔽逻辑的最小间隔时间
+            const throttleTime = 500;
+            // 创建一个 MutationObserver 实例，用于监听 DOM 变化
             this.observer = new MutationObserver((mutations) => {
-                // 清除之前的定时器
+                // 清除之前设置的定时器，避免在节流时间内重复执行屏蔽逻辑
                 clearTimeout(timer);
-
-                // 设置新的定时器，延迟执行屏蔽逻辑
+                // 设置一个新的定时器，在节流时间后执行屏蔽逻辑
                 timer = setTimeout(() => {
+                    // 强制重新执行屏蔽逻辑
                     this.executeShielding(true);
                 }, throttleTime);
             });
-
+            // 开始观察 document.body 元素及其子元素的变化
             this.observer.observe(document.body, {
+                // 监听子节点的添加或移除
                 childList: true,
+                // 监听所有后代节点的变化
                 subtree: true
             });
         }
@@ -718,6 +1167,11 @@
                     z-index: ${CONFIG.Z_INDEX} !important;
                     font-family: system-ui, sans-serif !important;
                     display: none;
+                    border: none !important;
+                    max-height: calc(100vh - 100px) !important;
+                    height: auto !important;
+                    flex-direction: column !important;
+                    overflow: hidden !important;
                 }
                 .shield-tab {
                     padding: 12px;
@@ -742,8 +1196,6 @@
                 }
                 .shield-content {
                     padding: 14px;
-                    max-height: 60vh;
-                    overflow-y: auto;
                 }
                 .shield-input {
                     display: flex;
@@ -795,7 +1247,6 @@
                     border-radius: 9px;
                     transition: background-color 0.3s;
                 }
-
                 .toggle-slider {
                     position: absolute;
                     top: 1.1px;
@@ -806,16 +1257,12 @@
                     border-radius: 50%;
                     transition: transform 0.3s;
                 }
-
                 input:checked + .toggle-switch {
                     background-color: rgb(23, 170, 253);
                 }
-
                 input:checked + .toggle-switch .toggle-slider {
                     transform: translateX(21px);
                 }
-
-
                 .shield-quick-menu {
                     position: absolute !important;
                     bottom: 8px !important;
@@ -888,56 +1335,99 @@
                         width: 36px !important; /* 移动端宽度 */
                     }
                 }
-                 /* 折叠容器样式 */
-    .collapsible-container {
-        margin: 12px;
-        border: 1px solid #eee;
-        border-radius: 8px;
-    }
-    .collapsible-content {
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-    .collapsible-header .arrow {
-        font-size: 10px;
-
-    }
-    .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 40px;
-            height: 18px;
-            background-color: #ccc;
-            border-radius: 9px;
-            transition: background-color 0.3s;
-        }
-
-        .toggle-slider {
-            position: absolute;
-            top: 1.1px;
-            left: 1.1px;
-            width: 16px;
-            height: 16px;
-            background-color: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-        }
-
-        input:checked + .toggle-switch {
-            background-color: rgb(23, 170, 253);
-        }
-
-        input:checked + .toggle-switch .toggle-slider {
-            transform: translateX(21px);
-        }
-        @media (max-width: 768px) {
-                .quick-shield-notification {
-                    right: 10px;
-                    left: 10px;
-                    width: calc(100% - 20px);
-                    text-align: center;
+                /* 折叠容器样式 */
+               .collapsible-container {
+                    margin: 12px;
+                    border: 1px solid #eee;
+                    border-radius: 8px;
+               }
+               
+               /* 滚动容器样式 */
+               .panel-scroll-container {
+                    flex: 1 !important;
+                    overflow-y: auto !important;
+                    position: relative !important;
+                    height: 100% !important;
+                    max-height: calc(100% - 100px) !important;
+                    min-height: 200px !important;
                 }
-            }
+                
+                /* Chrome、Safari 和 Opera 的滚动条美化 */
+                .panel-scroll-container::-webkit-scrollbar {
+                    width: 6px !important;
+                }
+                
+                .panel-scroll-container::-webkit-scrollbar-track {
+                    background: #f1f1f1 !important;
+                    border-radius: 3px !important;
+                }
+                
+                .panel-scroll-container::-webkit-scrollbar-thumb {
+                    background: #888 !important;
+                    border-radius: 3px !important;
+                }
+                
+                .panel-scroll-container::-webkit-scrollbar-thumb:hover {
+                    background: #555 !important;
+                }
+                
+                /* 确保标题和导入导出工具不随内容滚动 */
+                .shield-import-export-tools {
+                    position: relative !important;
+                    z-index: 1 !important;
+                }
+                
+                /* 移除面板外边框 */
+                #smart-shield-panel {
+                    border: none !important;
+                }
+                
+                /* 为折叠容器添加边框 */
+                .collapsible-container {
+                    border: 1px solid #eee !important;
+                }
+               .collapsible-content {
+                    transition: all 0.3s ease;
+                    overflow: hidden;
+               }
+               .collapsible-header .arrow {
+                    font-size: 10px;
+            
+               }
+               .toggle-switch {
+                        position: relative;
+                        display: inline-block;
+                        width: 40px;
+                        height: 18px;
+                        background-color: #ccc;
+                        border-radius: 9px;
+                        transition: background-color 0.3s;
+                    }
+                    .toggle-slider {
+                        position: absolute;
+                        top: 1.1px;
+                        left: 1.1px;
+                        width: 16px;
+                        height: 16px;
+                        background-color: white;
+                        border-radius: 50%;
+                        transition: transform 0.3s;
+                    }
+                    input:checked + .toggle-switch {
+                        background-color: rgb(23, 170, 253);
+                    }
+            
+                    input:checked + .toggle-switch .toggle-slider {
+                        transform: translateX(21px);
+                    }
+                    @media (max-width: 768px) {
+                            .quick-shield-notification {
+                                right: 10px;
+                                left: 10px;
+                                width: calc(100% - 20px);
+                                text-align: center;
+                            }
+                        }
             `);
         }
         // 绑定全局事件
@@ -982,15 +1472,14 @@
             new MutationObserver(() => this.executeShielding())
                 .observe(document.body, { childList: true, subtree: true });
         }
-        /* ========== 移动端适配 ========== */
+        /* ========== 基础屏蔽 ========== */
         // 切换屏蔽面板的显示状态
         togglePanel() {
             this.isPanelOpen = !this.isPanelOpen;
-            this.panel.style.display = this.isPanelOpen ? 'block' : 'none';
+            this.panel.style.display = this.isPanelOpen ? 'flex' : 'none';
         }
         // 构建面板 UI
         buildPanelUI() {
-
             const versionInfo = document.createElement('div');
             versionInfo.style.cssText = `
                     padding: 12px;
@@ -1004,12 +1493,14 @@
             closeBtn.className = 'panel-close';
             closeBtn.textContent = '×';
             closeBtn.onclick = () => this.togglePanel();
-
-            //===== 新增：折叠容器 =====
-            // 外层容器
+            
+            // 创建滚动容器来包裹所有内容面板
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'panel-scroll-container';
+            
+            //折叠容器-外层容器
             const collapsibleContainer = document.createElement('div');
             collapsibleContainer.className = 'collapsible-container';
-
             // 标题栏
             const collapsibleHeader = document.createElement('div');
             collapsibleHeader.className = 'collapsible-header';
@@ -1025,12 +1516,10 @@
                 border-radius: 8px;
                 cursor: pointer;
             `;
-
             // 内容容器（包裹原有的选项卡）
             const collapsibleContent = document.createElement('div');
             collapsibleContent.className = 'collapsible-content';
             collapsibleContent.style.display = 'none'; // 默认隐藏
-
             // 选项卡容器
             const tabBar = document.createElement('div');
             tabBar.className = 'shield-tab';
@@ -1048,24 +1537,43 @@
                 tabBar.appendChild(tabBtn);
                 contentArea.appendChild(panel);
             });
-
-            // ===== 组装折叠容器 =====
+            //组装折叠容器
             collapsibleContent.appendChild(tabBar);
             collapsibleContent.appendChild(contentArea);
             collapsibleContainer.appendChild(collapsibleHeader);
             collapsibleContainer.appendChild(collapsibleContent);
-
             // 点击标题切换折叠状态
             collapsibleHeader.addEventListener('click', () => {
                 const isHidden = collapsibleContent.style.display === 'none';
                 collapsibleContent.style.display = isHidden ? 'block' : 'none';
                 collapsibleHeader.querySelector('.arrow').textContent = isHidden ? '▼' : '▶';
             });
-
+            
+            // 将所有内容面板添加到滚动容器中
+            scrollContainer.appendChild(collapsibleContainer);
+            
             // 导入导出工具
             const tools = this.buildImportExport();
             // 组装面板
-            this.panel.append(versionInfo, closeBtn, collapsibleContainer, tools);
+            this.panel.append(versionInfo, closeBtn, scrollContainer, tools);
+            
+            // 确保所有折叠容器都在滚动区域内
+            // 延迟执行，确保TagShield和ChatMultiFunction的UI已经注入
+            setTimeout(() => {
+                const panel = document.getElementById('smart-shield-panel');
+                const scrollContainer = panel.querySelector('.panel-scroll-container');
+                
+                // 找到所有折叠容器
+                const collapsibleContainers = panel.querySelectorAll('.collapsible-container');
+                
+                // 检查并移动不在滚动容器中的折叠容器
+                collapsibleContainers.forEach(container => {
+                    if (container.parentNode !== scrollContainer) {
+                        // 将容器移动到滚动容器内，但保持原有的顺序
+                        scrollContainer.appendChild(container);
+                    }
+                });
+            }, 100);
         }
         // 创建选项卡按钮
         createTabButton(label, isActive) {
@@ -1118,32 +1626,40 @@
             document.querySelectorAll(CONFIG.PARENT_SELECTOR).forEach(parent => {
                 parent.style.removeProperty('display');
             });
-
             // 重新执行屏蔽
             this.processed = new WeakSet();
+            // 遍历管理器中的所有分类配置
             Object.entries(this.manager).forEach(([key, cfg]) => {
+                // 查找当前分类配置选择器对应的所有元素
                 document.querySelectorAll(cfg.selector).forEach(el => {
+                    // 如果该元素已经处理过且没有强制重新处理的需求，则跳过
                     if (this.processed.has(el) && !force) return;
-
-                    // 获取原始文本并清洗
+                    // 获取元素的文本内容并去除首尾空格
                     let rawText = el.textContent.trim();
+                    // 如果配置中有文本处理函数，则使用该函数处理原始文本，否则直接使用原始文本
                     let processedText = cfg.processText ? cfg.processText(rawText) : rawText;
-
-                    // 匹配逻辑
+                    // 匹配逻辑：检查是否有符合条件的关键词需要屏蔽当前元素
                     const shouldBlock = [...cfg.data].some(word => {
+                        // 根据不同的匹配类型执行不同的匹配逻辑
                         switch(cfg.matchType) {
                             case 'exact':
+                                // 精确匹配：处理后的文本与关键词完全相等
                                 return processedText === word;
                             case 'fuzzy':
+                                // 模糊匹配：处理后的文本包含关键词（忽略大小写）
                                 return processedText.toLowerCase().includes(word.toLowerCase());
                             case 'regex':
+                                // 正则匹配：使用关键词作为正则表达式进行匹配（忽略大小写）
                                 return new RegExp(word, 'i').test(processedText);
                         }
                     });
-
+                    // 如果满足屏蔽条件
                     if (shouldBlock) {
+                        // 找到元素最近的符合父选择器的父元素
                         const parent = el.closest(CONFIG.PARENT_SELECTOR);
+                        // 如果找到父元素，则将其隐藏
                         parent?.style.setProperty('display', 'none', 'important');
+                        // 将该元素标记为已处理
                         this.processed.add(el);
                     }
                 });
@@ -1168,21 +1684,32 @@
                 list.appendChild(li);
             });
         }
+        //渲染指定分类的屏蔽关键词列表
         renderKeywordsList(category) {
+            // 根据分类名称查找对应的关键词列表元素
             const list = this.panel.querySelector(`[data-key="${category}"] .shield-list`);
+            // 若找到对应的列表元素，则调用 refreshList 方法刷新列表内容
             if (list) {
                 this.refreshList(category, list);
             }
         }
-        // 处理添加关键词
+        //处理添加屏蔽关键词的逻辑
         handleAddKey(key, input) {
+            // 获取输入框中的值，并去除首尾空格
             const word = input.value.trim();
+            // 如果输入为空，则直接返回，不执行后续操作
             if (!word) return;
+            // 将处理后的关键词添加到对应分类的管理器数据集中
             this.manager[key].data.add(word);
+            // 调用 saveData 方法将更新后的关键词数据保存到存储中
             this.saveData(key);
+            // 刷新对应分类的关键词列表显示，input.parentElement.nextElementSibling 为关键词列表元素
             this.refreshList(key, input.parentElement.nextElementSibling);
+            // 清空输入框，以便用户继续输入新的关键词
             input.value = '';
+            // 强制重新执行屏蔽逻辑，确保新添加的关键词立即生效
             this.executeShielding(true);
+            // 调用通知函数，显示添加成功的提示信息，持续时间为 1500 毫秒
             showNotification(`已添加屏蔽关键词: ${word}`, 1500);
         }
         // 处理移除关键词
@@ -1191,10 +1718,8 @@
             this.saveData(key);
             const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`);
             this.refreshList(key, list);
-
             // 强制刷新所有相关元素
             this.executeShielding(true);
-
             // 显式恢复所有布局的项目
             document.querySelectorAll('.item-list, .item').forEach(el => {
                 const target = el.querySelector(CONFIG.CATEGORIES[key].selector)?.textContent.trim();
@@ -1205,7 +1730,9 @@
         }
         // 构建导入导出工具
         buildImportExport() {
+            
             const tools = document.createElement('div');
+           tools.className = 'shield-import-export-tools'; // 添加唯一类名
             tools.style.padding = '16px';
             // 导出按钮
             const exportButton = document.createElement('button');
@@ -1318,119 +1845,7 @@
         const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
         checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
     });
-
-    /* ====================== 新功能：快速屏蔽菜单 ====================== */
-    class QuickShield {
-        constructor(shieldSystem) {
-            this.shieldSystem = shieldSystem;
-            this.init();
-        }
-
-        init() {
-            this.observer = new MutationObserver((mutations) => {
-                mutations.forEach(mutation => {
-                    if (mutation.addedNodes.length) {
-                        this.addQuickShieldMenus();
-                        setTimeout(() => this.shieldSystem.executeShielding(true), 100);
-                    }
-                });
-            });
-
-            this.observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-
-            this.addQuickShieldMenus();
-        }
-
-        addQuickShieldMenus() {
-            // 选择所有需要添加快速屏蔽菜单的项目
-            const items = document.querySelectorAll(CONFIG.PARENT_SELECTOR);
-
-            items.forEach(item => {
-                // 避免重复添加
-                if (item.querySelector('.shield-quick-menu')) return;
-
-                // 查找项目中的作者、标题和描述元素
-                const authorEl = item.querySelector(CONFIG.CATEGORIES.author.selector);
-                const titleEl = item.querySelector(CONFIG.CATEGORIES.title.selector);
-                const descEl = item.querySelector(CONFIG.CATEGORIES.description.selector);
-
-                // 创建快速屏蔽菜单
-                const menu = document.createElement('div');
-                menu.className = 'shield-quick-menu';
-                menu.innerHTML = `
-                <button class="shield-dropdown-btn">⚙️</button>
-                <div class="shield-dropdown-content">
-                    ${authorEl ? `<div class="shield-dropdown-item" data-type="author">屏蔽作者</div>` : ''}
-                    ${titleEl ? `<div class="shield-dropdown-item" data-type="title">屏蔽本卡</div>` : ''}
-                </div>
-            `;
-
-                item.appendChild(menu);
-
-                // 添加事件监听
-                const dropdownBtn = menu.querySelector('.shield-dropdown-btn');
-                const dropdownContent = menu.querySelector('.shield-dropdown-content');
-
-                dropdownBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    dropdownContent.classList.toggle('show');
-                });
-
-                // 为菜单项添加点击事件
-                menu.querySelectorAll('.shield-dropdown-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        dropdownContent.classList.remove('show');
-
-                        const type = item.dataset.type;
-                        let text;
-
-                        if (type === 'author' && authorEl) {
-                            text = CONFIG.CATEGORIES.author.processText(authorEl.textContent);
-                        } else if (type === 'title' && titleEl) {
-                            text = CONFIG.CATEGORIES.title.processText(titleEl.textContent);
-                        }
-
-                        if (text) {
-                            this.addToShieldList(type, text);
-                        }
-                    });
-                });
-
-                // 点击其他地方关闭菜单
-                document.addEventListener('click', () => {
-                    dropdownContent.classList.remove('show');
-                });
-            });
-        }
-
-        // 添加关键词到屏蔽列表并立即应用
-        addToShieldList(type, keyword) {
-            if (!this.shieldSystem.manager[type]) return;
-
-            // 添加关键词到管理器
-            this.shieldSystem.manager[type].data.add(keyword);
-
-            // 保存到本地存储
-            this.shieldSystem.saveData(type);
-
-            // 刷新关键词列表显示
-            this.shieldSystem.renderKeywordsList(type);
-
-            // 立即执行屏蔽逻辑
-            this.shieldSystem.executeShielding(true);
-
-            // 显示成功提示
-            window.showNotification(`已屏蔽: ${keyword}`, 1500);
-            window.showNotification(`已添加屏蔽关键词: ${keyword}`, 1500);
-        }
-    }
-
-
-    /* ==================== 初始化系统 ==================== */
+    /* =========================== 初始化系统 =========================== */
     let initialized = false;
     let updateTimer = null;
     function init() {
