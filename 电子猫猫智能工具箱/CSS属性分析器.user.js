@@ -42,23 +42,23 @@
         
         // 边框相关
         'border': '边框',
-        'border-width': '边框宽度'，
+        'border-width': '边框宽度',
         'border-style': '边框样式',
         'border-color': '边框颜色',
         'border-top': '上边框',
-        'border-right': '右边框'，
+        'border-right': '右边框',
         'border-bottom': '下边框',
         'border-left': '左边框',
         'border-radius': '边框圆角',
         'border-top-left-radius': '左上圆角',
         'border-top-right-radius': '右上圆角',
         'border-bottom-right-radius': '右下圆角',
-        'border-bottom-left-radius': '左下圆角'，
+        'border-bottom-left-radius': '左下圆角',
         
         // 边距相关
         'margin': '外边距',
         'margin-top': '上外边距',
-        'margin-right': '右外边距'，
+        'margin-right': '右外边距',
         'margin-bottom': '下外边距',
         'margin-left': '左外边距',
         'padding': '内边距',
@@ -959,7 +959,7 @@
             `;
             advancedBtn.addEventListener('click', () => {
                 // 切换高级模式状态
-                config。advancedMode = !config.advancedMode;
+                config.advancedMode = !config.advancedMode;
                 // 更新按钮样式和文本
                 advancedBtn.textContent = config.advancedMode ? '标准模式' : '高级CSS设置';
                 advancedBtn.style.background = config.advancedMode ? '#ffc107' : '#6c757d';
@@ -984,7 +984,7 @@
                 cursor: pointer;
                 font-size: 12px;
             `;
-            selectElementBtn.addEventListener('click'， () => {
+            selectElementBtn.addEventListener('click', () => {
                 // 隐藏主界面面板
                 panel.style.display = 'none';
                 
@@ -1143,7 +1143,7 @@
                 ruleContainer.className = 'rule-container css-analyzer-rule-item';
                 ruleContainer.dataset.selector = rule.selector;
                 ruleContainer.dataset.analyzed = 'false'; // 标记为未分析
-                ruleContainer。style.cssText = `
+                ruleContainer.style.cssText = `
                     margin-bottom: 15px;
                     background: #f8f9fa;
                     border-radius: 6px;
@@ -1167,8 +1167,8 @@
                 `;
                 
                 const selectorHeader = document.createElement('h3');
-                selectorHeader.textContent = `选择器: ${rule。selector}`;
-                selectorHeader.style。cssText = `
+                selectorHeader.textContent = `选择器: ${rule.selector}`;
+                selectorHeader.style.cssText = `
                     margin: 0;
                     color: #007bff;
                     font-size: 14px;
@@ -1248,14 +1248,14 @@
                 `;
                 hideContainerBtn.addEventListener('click', () => {
                     // 在分析界面中隐藏这个规则容器
-                    ruleContainer.style。display = 'none';
+                    ruleContainer.style.display = 'none';
                     showNotification('已在分析界面中隐藏该容器');
                 });
                 
                 actionsContainer.appendChild(toggleBtn);
-                actionsContainer。appendChild(locateBtn);
+                actionsContainer.appendChild(locateBtn);
                 actionsContainer.appendChild(resetBtn);
-                actionsContainer。appendChild(hideContainerBtn);
+                actionsContainer.appendChild(hideContainerBtn);
                 selectorHeaderContainer.appendChild(selectorHeader);
                 selectorHeaderContainer.appendChild(actionsContainer);
                 ruleContainer.appendChild(selectorHeaderContainer);
@@ -1704,7 +1704,7 @@
         }
         
         // 搜索按钮事件
-        searchBtn.addEventListener('click'， () => {
+        searchBtn.addEventListener('click', () => {
             const keyword = searchInput.value.trim();
             if (keyword) {
                 performSearch(keyword);
@@ -1712,7 +1712,7 @@
         });
         
         // 搜索框回车事件
-        searchInput。addEventListener('keypress'， (e) => {
+        searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const keyword = searchInput.value.trim();
                 if (keyword) {
@@ -1722,16 +1722,16 @@
         });
         
         // 重置按钮事件
-        resetBtn。addEventListener('click'， () => {
-            searchInput。value = '';
+        resetBtn.addEventListener('click', () => {
+            searchInput.value = '';
             const ruleItems = document.querySelectorAll('.css-analyzer-rule-item');
-            ruleItems。forEach(item => {
-                item。style.display = 'block';
+            ruleItems.forEach(item => {
+                item.style.display = 'block';
             });
             
             const statsElement = document.getElementById('css-analyzer-search-stats');
             if (statsElement) {
-                statsElement。remove();
+                statsElement.remove();
             }
         });
     }
@@ -1743,7 +1743,7 @@
         if (!styleSheet) {
             styleSheet = document.createElement('style');
             styleSheet.id = 'css-analyzer-styles';
-            document。head.appendChild(styleSheet);
+            document.head.appendChild(styleSheet);
         }
 
         // 获取现有规则
@@ -1855,7 +1855,7 @@
 
         // 添加动画
         const style = document.createElement('style');
-        style。textContent = `
+        style.textContent = `
             @keyframes fadeInOut {
                 0% { opacity: 0; transform: translate(-50%, -20px); }
                 20% { opacity: 1; transform: translate(-50%, 0); }
@@ -1863,19 +1863,19 @@
                 100% { opacity: 0; transform: translate(-50%, -20px); }
             }
         `;
-        document.head。appendChild(style);
+        document.head.appendChild(style);
 
-        document。body。appendChild(notification);
+        document.body.appendChild(notification);
 
         // 2秒后移除通知
         setTimeout(() => {
-            notification。remove();
-            style。remove();
-        }， 2000);
+            notification.remove();
+            style.remove();
+        }, 2000);
     }
 
     // 注册油猴菜单命令
-    GM_registerMenuCommand('启动CSS属性分析器'， () => {
+    GM_registerMenuCommand('启动CSS属性分析器', () => {
         const analyzedRules = findContentLeftCSS();
         createUI(analyzedRules);
         // 加载保存的CSS更改
@@ -1883,10 +1883,10 @@
     });
 
     // 添加快捷键支持
-    document。addEventListener('keydown'， (e) => {
+    document.addEventListener('keydown', (e) => {
         // Ctrl+Alt+C 启动分析器
-        if (e。ctrlKey && e。altKey && e。key === 'c') {
-            e。preventDefault();
+        if (e.ctrlKey && e.altKey && e.key === 'c') {
+            e.preventDefault();
             const analyzedRules = findContentLeftCSS();
             createUI(analyzedRules);
             // 加载保存的CSS更改
@@ -1902,4 +1902,17 @@
     // 5. 开始测试和使用CSS属性分析器功能
     // 6. 测试完成后，在命令窗口按Ctrl+C停止服务器
     /* =============================== */
+    
+    // 暴露全局对象，以便其他脚本可以调用CSS属性分析器的功能
+    window.cssPropertyAnalyzer = {
+        initialize: function() {
+            const analyzedRules = findContentLeftCSS();
+            createUI(analyzedRules);
+            // 加载保存的CSS更改
+            loadCSSChanges();
+        },
+        findContentLeftCSS: findContentLeftCSS,
+        createUI: createUI,
+        loadCSSChanges: loadCSSChanges
+    };
 })();
