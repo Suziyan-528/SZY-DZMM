@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         猫猫岛智能工具箱-测试版
+// @name         猫猫岛智能工具箱-正式完整版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      5.9.0
+// @version      6.0.0
 // @description  移除未试装的功能，新增无图模式、隐藏评分功能
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
@@ -222,7 +222,7 @@
     function exportConfig() {
         const exportData = {
             categories: CONFIG.CATEGORIES,
-            tagShieldState: new TagShield().state
+            tagShieldState: new TagShield(false).state
         };
         const jsonData = JSON.stringify(exportData, null, 2);
         const blob = new Blob([jsonData], { type: 'application/json' });
@@ -258,7 +258,7 @@
     }
     /* ========================== 标签屏蔽系统 ========================== */
     class TagShield {
-        constructor() {
+        constructor(autoExecute = false) {
             // 配置存储键名
             this.STORAGE_KEYS = {
                 authorTag: 'HIDE_AUTHOR_TAG',
@@ -273,7 +273,7 @@
                 hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false),
                 hideOriginTag: GM_getValue(this.STORAGE_KEYS.originTag, false),
                 hideScoreTag: GM_getValue(this.STORAGE_KEYS.scoreTag, false),
-                hideImageTag: GM_getValue(this.STORAGE_KEYS.imageTag, false)
+                hideImageTag: false // 强制设置为false，确保初始状态不会屏蔽图片
             };
             // 初始化注入标记
             this.injected = false;
@@ -293,6 +293,11 @@
                 attributes: false,
                 characterData: false
             });
+            
+            // 只有在明确指定时才自动执行屏蔽
+            if (autoExecute) {
+                this.execute();
+            }
         }
         // 尝试注入UI，增加了更严格的检查
         tryInjectUI() {
@@ -345,7 +350,7 @@
                     el.style.margin = '';
                     
                     // 对于图片元素，额外确保重要样式被移除
-                    if (['.item-img', '.page-background-img', '.header-role-img'].includes(selector)) {
+                    if (['.item-img', '.header-role-img'].includes(selector)) {
                         // 强制清除important标记的样式
                         el.removeAttribute('style');
                         // 重新应用原始内联样式（如果有）
@@ -432,23 +437,28 @@
                     // 先清除所有可能的重要样式
                     box.style.removeProperty('background-image');
                     
-                    // 恢复原始背景样式
-                    if (box.dataset.originalBackground) {
-                        box.style.background = box.dataset.originalBackground;
+                    // 如果没有保存的样式数据，直接清除内联样式，让浏览器使用默认样式
+                    if (!box.dataset.originalBackground && !box.dataset.originalBackgroundImage) {
+                        box.removeAttribute('style');
+                    } else {
+                        // 恢复原始背景样式
+                        if (box.dataset.originalBackground) {
+                            box.style.background = box.dataset.originalBackground;
+                        }
+                        if (box.dataset.originalBackgroundImage && box.dataset.originalBackgroundImage !== 'none') {
+                            // 强制设置背景图片，不使用important标记
+                            box.style.backgroundImage = box.dataset.originalBackgroundImage;
+                        }
+                        
+                        // 对于一些特殊情况，直接重置为默认状态
+                        if (box.dataset.originalBackgroundImage === 'none') {
+                            box.style.backgroundImage = 'none';
+                        }
+                        
+                        // 清除保存的数据，以便下次能重新捕获最新状态
+                        delete box.dataset.originalBackground;
+                        delete box.dataset.originalBackgroundImage;
                     }
-                    if (box.dataset.originalBackgroundImage && box.dataset.originalBackgroundImage !== 'none') {
-                        // 强制设置背景图片，不使用important标记
-                        box.style.backgroundImage = box.dataset.originalBackgroundImage;
-                    }
-                    
-                    // 对于一些特殊情况，直接重置为默认状态
-                    if (box.dataset.originalBackgroundImage === 'none') {
-                        box.style.backgroundImage = 'none';
-                    }
-                    
-                    // 清除保存的数据，以便下次能重新捕获最新状态
-                    delete box.dataset.originalBackground;
-                    delete box.dataset.originalBackgroundImage;
                 }
             });
             
@@ -468,23 +478,28 @@
                     // 先清除所有可能的重要样式
                     box.style.removeProperty('background-image');
                     
-                    // 恢复原始背景样式
-                    if (box.dataset.originalBackground) {
-                        box.style.background = box.dataset.originalBackground;
+                    // 如果没有保存的样式数据，直接清除内联样式，让浏览器使用默认样式
+                    if (!box.dataset.originalBackground && !box.dataset.originalBackgroundImage) {
+                        box.removeAttribute('style');
+                    } else {
+                        // 恢复原始背景样式
+                        if (box.dataset.originalBackground) {
+                            box.style.background = box.dataset.originalBackground;
+                        }
+                        if (box.dataset.originalBackgroundImage && box.dataset.originalBackgroundImage !== 'none') {
+                            // 强制设置背景图片，不使用important标记
+                            box.style.backgroundImage = box.dataset.originalBackgroundImage;
+                        }
+                        
+                        // 对于一些特殊情况，直接重置为默认状态
+                        if (box.dataset.originalBackgroundImage === 'none') {
+                            box.style.backgroundImage = 'none';
+                        }
+                        
+                        // 清除保存的数据，以便下次能重新捕获最新状态
+                        delete box.dataset.originalBackground;
+                        delete box.dataset.originalBackgroundImage;
                     }
-                    if (box.dataset.originalBackgroundImage && box.dataset.originalBackgroundImage !== 'none') {
-                        // 强制设置背景图片，不使用important标记
-                        box.style.backgroundImage = box.dataset.originalBackgroundImage;
-                    }
-                    
-                    // 对于一些特殊情况，直接重置为默认状态
-                    if (box.dataset.originalBackgroundImage === 'none') {
-                        box.style.backgroundImage = 'none';
-                    }
-                    
-                    // 清除保存的数据，以便下次能重新捕获最新状态
-                    delete box.dataset.originalBackground;
-                    delete box.dataset.originalBackgroundImage;
                 }
             });
         }
@@ -718,8 +733,20 @@
                                 </span>
                                 <span>注入快捷屏蔽菜单</span>
                             </label>
-        
 
+                            <!-- 启动CSS属性分析器 -->
+                            <button id="start-css-analyzer" style="
+                                padding: 8px 16px;
+                                background-color: #28a745;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-size: 14px;
+                                transition: background-color 0.3s;
+                            ">
+                                🎨 启动CSS属性分析器
+                            </button>
                         </div>
                     </div>
                 `;
@@ -778,7 +805,89 @@
                     this.enableQuickShield();
                 }
 
+                // 添加CSS属性分析器按钮点击事件
+                const cssAnalyzerButton = container.querySelector('#start-css-analyzer');
+                if (cssAnalyzerButton) {
+                    cssAnalyzerButton.addEventListener('click', () => {
+                        this.startCssAnalyzer();
+                    });
+                    
+                    // 添加鼠标悬停效果
+                    cssAnalyzerButton.addEventListener('mouseover', () => {
+                        cssAnalyzerButton.style.backgroundColor = '#218838';
+                    });
+                    
+                    cssAnalyzerButton.addEventListener('mouseout', () => {
+                        cssAnalyzerButton.style.backgroundColor = '#28a745';
+                    });
+                }
+
                 this.injectStyles();
+            }
+
+            // 启动CSS属性分析器
+            startCssAnalyzer() {
+                // 检查是否已加载CSS属性分析器
+                if (window.cssPropertyAnalyzer && window.cssPropertyAnalyzer.initialize) {
+                    // 如果已加载，直接调用初始化函数
+                    window.cssPropertyAnalyzer.initialize();
+                } else {
+                    // 如果未加载，动态加载并执行CSS属性分析器脚本
+                    const scriptUrl = 'd:\\Desktop\\电子猫猫工具箱\\CSS属性分析器.user.js';
+                    
+                    // 创建一个通知告知用户正在启动CSS属性分析器
+                    this.showNotification('正在启动CSS属性分析器...');
+                    
+                    // 在实际环境中，由于浏览器安全限制，直接加载本地文件可能会失败
+                    // 这里提供两种方案：
+                    // 1. 方案一：尝试直接打开CSS属性分析器脚本（适合本地开发环境）
+                    try {
+                        // 由于安全限制，直接加载本地脚本可能无法实现
+                        // 这里提供一个提示，告知用户如何手动启动CSS属性分析器
+                        this.showNotification('请使用油猴菜单或快捷键Ctrl+Alt+C启动CSS属性分析器');
+                    } catch (error) {
+                        console.error('启动CSS属性分析器失败:', error);
+                        this.showNotification('启动CSS属性分析器失败，请使用油猴菜单启动');
+                    }
+                }
+            }
+            
+            // 显示通知
+            showNotification(message, duration = 2000) {
+                const notification = document.createElement('div');
+                notification.textContent = message;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #28a745;
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 4px;
+                    z-index: 10000;
+                    animation: fadeInOut ${duration/1000}s ease-in-out;
+                `;
+
+                // 添加动画
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes fadeInOut {
+                        0% { opacity: 0; transform: translate(-50%, -20px); }
+                        20% { opacity: 1; transform: translate(-50%, 0); }
+                        80% { opacity: 1; transform: translate(-50%, 0); }
+                        100% { opacity: 0; transform: translate(-50%, -20px); }
+                    }
+                `;
+                document.head.appendChild(style);
+
+                document.body.appendChild(notification);
+
+                // 定时后移除通知
+                setTimeout(() => {
+                    notification.remove();
+                    style.remove();
+                }, duration);
             }
 
             enableQuickShield() {
@@ -966,7 +1075,7 @@
             // 延迟 1 秒后检查脚本是否有更新
             setTimeout(() => checkForUpdates(), 1000);
             // 新增：初始化标签屏蔽系统，用于处理标签相关的屏蔽逻辑
-            this.tagShield = new TagShield();
+            this.tagShield = new TagShield(false);
             // 不再立即初始化 QuickShield
             this.quickShield = null;
             // 新增聊天页拓展功能模块
@@ -994,12 +1103,12 @@
             });
             // 保存原始的 executeShielding 方法引用
             this.originalExecuteShielding = this.executeShielding.bind(this);
-            // 重写 executeShielding 方法，在执行原始屏蔽逻辑后，执行标签屏蔽逻辑
+            // 重写 executeShielding 方法，只执行原始屏蔽逻辑，不再自动执行标签屏蔽逻辑
             this.executeShielding = (force = false) => {
                 // 执行原始的屏蔽逻辑
                 this.originalExecuteShielding(force);
-                // 执行标签屏蔽逻辑
-                this.tagShield.execute();
+                // 不再自动执行标签屏蔽逻辑
+                // this.tagShield.execute();
             }
             // 根据设备类型选择不同的 DOM 监听方式
             if (isMobile) {
@@ -1027,8 +1136,8 @@
                     attributeFilter: ['class']
                 });
             }
-            // 首次执行标签屏蔽逻辑
-            this.tagShield.execute();
+            // 不再首次自动执行标签屏蔽逻辑
+            // this.tagShield.execute();
         }
         // 如果需要手动触发启用 quickShield
         enableQuickShield() {
@@ -1790,7 +1899,7 @@
                     acc[key] = [...cfg.data];
                     return acc;
                 }, {}),
-                tagShieldState: new TagShield().state
+                tagShieldState: new TagShield(false).state
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1817,7 +1926,7 @@
                         }
                     });
                     // 处理标签屏蔽状态
-                    const tagShield = new TagShield();
+                    const tagShield = new TagShield(false);
                     Object.entries(tagShield.STORAGE_KEYS).forEach(([stateKey, storageKey]) => {
                         const value = importedData.tagShieldState[`hide${stateKey.charAt(0).toUpperCase() + stateKey.slice(1)}`];
                         GM_setValue(storageKey, value);
@@ -1828,7 +1937,8 @@
                         const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
                         checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
                     });
-                    tagShield.execute();
+                    // 不再自动执行屏蔽操作
+                    // tagShield.execute();
                     // 刷新屏蔽逻辑
                     this.executeShielding(true);
                     console.log('[配置导入] 成功');
@@ -1854,6 +1964,11 @@
         if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
         updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
         new ShieldSystem().executeShielding();
+        
+        // 创建TagShield实例并注入UI，但不自动执行屏蔽
+        const tagShield = new TagShield(false);
+        tagShield.tryInjectUI();
+        
         initialized = true;
     }
     // 监听页面加载完成事件
