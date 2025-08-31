@@ -2,7 +2,7 @@
 // @name         猫猫岛智能工具箱-正式完整版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
 // @version      6.0.0
-// @description  移除未试装的功能，新增无图模式、隐藏评分功能
+// @description  新增CSS属性分析器，能够本地调整状态栏样式
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
 // @match        *://*.sexyai.top/*
