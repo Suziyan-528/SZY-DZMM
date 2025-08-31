@@ -1,12 +1,16 @@
 // ==UserScript==
-// @name         CSS属性分析器 - 优化版
-// @namespace    https://github.com
-// @version      1.3
+// @name         CSS属性分析器
+// @namespace    https://github.com/Suziyan-528/SZY-DZMM
+// @version      2.0.0
 // @description  分析页面中的CSS属性，转换为中文解释，并提供可视化编辑界面（优化版：默认只分析特定容器）
-// @author       AI助手
-// @match        *://*/*
-// @match        http://localhost/*
-// @match        http://127.0.0.1/*
+// @author       苏子言
+// @match        *://*.meimoai10.com/*
+// @match        *://*.sexyai.top/*
+// @match        *://*.meimoai*.com/*
+// @match        *://*.meimodao.*/*
+// @match        *://*.meimodao.com/*
+// @match        *://*.meimoai8.com/*
+// @match        *://*.meimoai7.com/*
 // @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
 // @run-at       document-end
@@ -21,6 +25,10 @@
         advancedMode: false
     };
 
+    // 页面加载时自动加载保存的CSS属性
+    // 这样即使刷新网页，保存的样式也会立即生效，不需要先打开分析器界面
+    loadCSSChanges();
+
     // CSS属性中文对照表
     const cssPropertyMap = {
         // 背景相关
@@ -34,23 +42,23 @@
         
         // 边框相关
         'border': '边框',
-        'border-width': '边框宽度',
+        'border-width': '边框宽度'，
         'border-style': '边框样式',
         'border-color': '边框颜色',
         'border-top': '上边框',
-        'border-right': '右边框',
+        'border-right': '右边框'，
         'border-bottom': '下边框',
         'border-left': '左边框',
         'border-radius': '边框圆角',
         'border-top-left-radius': '左上圆角',
         'border-top-right-radius': '右上圆角',
         'border-bottom-right-radius': '右下圆角',
-        'border-bottom-left-radius': '左下圆角',
+        'border-bottom-left-radius': '左下圆角'，
         
         // 边距相关
         'margin': '外边距',
         'margin-top': '上外边距',
-        'margin-right': '右外边距',
+        'margin-right': '右外边距'，
         'margin-bottom': '下外边距',
         'margin-left': '左外边距',
         'padding': '内边距',
@@ -379,63 +387,139 @@
         if (!config.advancedMode) {
             let targetElements = [];
             
-            // 使用简化的选择器策略，减少无法定位的选择器
-            console.log('CSS属性分析器: 使用简化选择器策略查找目标元素');
+            // 使用精确的路径查找策略，按照用户指定路径
+            console.log('CSS属性分析器: 使用精确路径查找策略');
             
-            // 策略1: 直接查找.content.left元素及其内部元素
+            // 策略1: 精确按照用户指定路径查找: id="app" -> class="chat" -> class="chat-scope-box" -> class="item Ai" -> class="touch-scope" -> class="content left"
+            try {
+                // 先找到id="app"的元素
+                const appElement = document.getElementById('app');
+                if (appElement) {
+                    console.log('CSS属性分析器: 找到id="app"元素');
+                    
+                    // 查找app下的class="chat"元素
+                    // 因为需要过4层，所以使用querySelectorAll递归查找
+                    const chatElements = [];
+                    let currentLevel = [appElement];
+                    
+                    // 向下遍历4层
+                    for (let i = 0; i < 4 && currentLevel.length > 0; i++) {
+                        const nextLevel = [];
+                        currentLevel.forEach(el => {
+                            nextLevel.push(...Array.from(el.children));
+                        });
+                        currentLevel = nextLevel;
+                    }
+                    
+                    // 从第4层开始查找class="chat"的元素
+                    currentLevel.forEach(el => {
+                        if (el.classList && el.classList.contains('chat')) {
+                            chatElements.push(el);
+                        }
+                    });
+                    
+                    console.log(`CSS属性分析器: 找到 ${chatElements.length} 个class="chat"元素`);
+                    
+                    // 查找chat下的class="chat-scope-box"元素
+                    const chatScopeBoxElements = [];
+                    chatElements.forEach(chatEl => {
+                        const boxes = chatEl.querySelectorAll('.chat-scope-box');
+                        chatScopeBoxElements.push(...Array.from(boxes));
+                    });
+                    
+                    console.log(`CSS属性分析器: 找到 ${chatScopeBoxElements.length} 个class="chat-scope-box"元素`);
+                    
+                    // 从chat-scope-box向下遍历6层
+                    let elementsAfter6Levels = [];
+                    chatScopeBoxElements.forEach(boxEl => {
+                        let currentBoxLevel = [boxEl];
+                        
+                        // 向下遍历6层
+                        for (let i = 0; i < 6 && currentBoxLevel.length > 0; i++) {
+                            const nextBoxLevel = [];
+                            currentBoxLevel.forEach(el => {
+                                nextBoxLevel.push(...Array.from(el.children));
+                            });
+                            currentBoxLevel = nextBoxLevel;
+                        }
+                        
+                        elementsAfter6Levels.push(...currentBoxLevel);
+                    });
+                    
+                    console.log(`CSS属性分析器: 遍历6层后找到 ${elementsAfter6Levels.length} 个元素`);
+                    
+                    // 从这些元素中筛选出class="item Ai"且排除class="item Ai avatar-body"的元素
+                    const itemAiElements = elementsAfter6Levels.filter(el => {
+                        return el.classList && 
+                               el.classList.contains('item') && 
+                               el.classList.contains('Ai') && 
+                               !el.classList.contains('avatar-body');
+                    });
+                    
+                    console.log(`CSS属性分析器: 找到 ${itemAiElements.length} 个符合条件的class="item Ai"元素`);
+                    
+                    // 查找class="touch-scope"元素
+                    const touchScopeElements = [];
+                    itemAiElements.forEach(itemAiEl => {
+                        const scopes = itemAiEl.querySelectorAll('.touch-scope');
+                        touchScopeElements.push(...Array.from(scopes));
+                    });
+                    
+                    console.log(`CSS属性分析器: 找到 ${touchScopeElements.length} 个class="touch-scope"元素`);
+                    
+                    // 最后查找class="content left"元素
+                    const contentLeftElements = [];
+                    touchScopeElements.forEach(scopeEl => {
+                        const contents = scopeEl.querySelectorAll('.content.left');
+                        contentLeftElements.push(...Array.from(contents));
+                    });
+                    
+                    console.log(`CSS属性分析器: 找到 ${contentLeftElements.length} 个目标class="content left"元素`);
+                    
+                    // 从content left元素中提取所有元素（不包括content left本身），排除<uni-view>元素
+                    contentLeftElements.forEach(contentLeftEl => {
+                        // 提取class="e"元素
+                        const eElements = contentLeftEl.querySelectorAll('.e');
+                        targetElements.push(...Array.from(eElements));
+                        
+                        // 提取其他元素，排除<uni-view>元素
+                        const allOtherElements = contentLeftEl.querySelectorAll('*:not(uni-view)');
+                        targetElements.push(...Array.from(allOtherElements));
+                    });
+                }
+            } catch (e) {
+                console.error('CSS属性分析器: 精确路径查找策略执行出错:', e);
+            }
+            
+            // 去重
+            targetElements = [...new Set(targetElements)];
+            console.log(`CSS属性分析器: 总共找到 ${targetElements.length} 个目标class="e"元素`);
+            
+            if (targetElements.length > 0) {
+                return analyzeContentLeftElements(targetElements);
+            }
+            
+            // 策略2: 如果精确路径查找失败，使用备用的简化策略
+            console.log('CSS属性分析器: 备用简化策略 - 直接查找.content.left容器内的所有元素，排除<uni-view>');
             const contentLeftContainers = document.querySelectorAll('.content.left');
-            console.log(`CSS属性分析器: 找到 ${contentLeftContainers.length} 个.content.left容器`);
-            
             if (contentLeftContainers.length > 0) {
                 contentLeftContainers.forEach(container => {
-                    // 添加容器本身
-                    targetElements.push(container);
-                    
-                    // 获取所有子元素
-                    const children = container.querySelectorAll('*');
-                    targetElements = [...targetElements, ...Array.from(children)];
-                    
-                    // 特别关注class="e"元素
+                    // 提取class="e"元素
                     const eElements = container.querySelectorAll('.e');
-                    if (eElements.length > 0) {
-                        console.log(`CSS属性分析器: 在.content.left中找到 ${eElements.length} 个class="e"元素`);
-                    }
+                    targetElements.push(...Array.from(eElements));
                     
-                    // 查找内部的<style>标签
-                    const styleTags = container.querySelectorAll('style');
-                    if (styleTags.length > 0) {
-                        console.log(`CSS属性分析器: 在.content.left中找到 ${styleTags.length} 个<style>标签`);
-                    }
+                    // 提取其他元素，排除<uni-view>元素
+                    const allOtherElements = container.querySelectorAll('*:not(uni-view)');
+                    targetElements.push(...Array.from(allOtherElements));
                 });
                 
                 // 去重
                 targetElements = [...new Set(targetElements)];
-                console.log(`CSS属性分析器: 总共找到 ${targetElements.length} 个目标元素`);
+                console.log(`CSS属性分析器: 备用策略找到 ${targetElements.length} 个class="e"元素`);
                 
                 if (targetElements.length > 0) {
                     return analyzeContentLeftElements(targetElements);
                 }
-            }
-            
-            // 策略2: 查找特定的class="e"元素
-            console.log('CSS属性分析器: 备用策略 - 查找class="e"元素');
-            const eElements = document.querySelectorAll('.e');
-            if (eElements.length > 0) {
-                console.log(`CSS属性分析器: 找到 ${eElements.length} 个class="e"元素`);
-                return analyzeContentLeftElements(eElements);
-            }
-            
-            // 策略3: 查找可能包含内容的元素
-            console.log('CSS属性分析器: 备用策略 - 查找可能包含内容的元素');
-            const possibleContentElements = document.querySelectorAll(
-                '[class*="content"], [id*="content"], ' +
-                'article, section, .message, .chat-message, ' +
-                '.markdown-body, .prose, pre, code'
-            );
-            
-            if (possibleContentElements.length > 0) {
-                console.log(`CSS属性分析器: 找到 ${possibleContentElements.length} 个可能包含内容的元素`);
-                return analyzeContentLeftElements(Array.from(possibleContentElements));
             }
             
             console.log('CSS属性分析器: 所有策略都未找到匹配元素');
@@ -742,6 +826,9 @@
             margin-bottom: 10px;
         `;
         
+        // 添加移动端适配样式
+        versionInfo.classList.add('version-info');
+        
         const titleBorder = document.createElement('div');
         titleBorder.style.cssText = `
             width: 100%;
@@ -768,6 +855,54 @@
             justify-content: flex-end;
         `;
         panel.appendChild(buttonContainer);
+        
+        // 添加移动端适配的CSS样式
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
+            /* 移动端适配：当屏幕宽度小于768px时调整按钮布局 */
+            @media (max-width: 768px) {
+                .button-container {
+                    display: grid !important;
+                    grid-template-columns: 1fr 1fr;
+                    grid-template-rows: auto auto;
+                    gap: 5px;
+                    width: 45%;
+                    right: 2.5%;
+                    flex-wrap: nowrap !important;
+                    justify-content: stretch !important;
+                    height: auto !important;
+                }
+                /* 确保每个按钮占满单元格 */
+                .button-container button {
+                    order: initial !important;
+                    width: 100% !important;
+                    box-sizing: border-box;
+                }
+                /* 调整按钮位置为田字格布局 */
+                .button-container button:nth-child(3) { /* 高级CSS设置按钮 - 左上角 */
+                    grid-column: 1;
+                    grid-row: 1;
+                }
+                .button-container button:nth-child(1) { /* 关闭按钮 - 右上角 */
+                    grid-column: 2;
+                    grid-row: 1;
+                }
+                .button-container button:nth-child(4) { /* 手动选择元素按钮 - 左下角 */
+                    grid-column: 1;
+                    grid-row: 2;
+                }
+                .button-container button:nth-child(2) { /* 刷新按钮 - 右下角 */
+                    grid-column: 2;
+                    grid-row: 2;
+                }
+                
+                /* 版本信息元素移动端样式 */
+                .version-info {
+                    height: 20px !important;
+                }
+            }
+        `;
+        document.head.appendChild(styleElement);
         
         // 创建关闭按钮
         const closeBtn = document.createElement('button');
@@ -824,7 +959,7 @@
             `;
             advancedBtn.addEventListener('click', () => {
                 // 切换高级模式状态
-                config.advancedMode = !config.advancedMode;
+                config。advancedMode = !config.advancedMode;
                 // 更新按钮样式和文本
                 advancedBtn.textContent = config.advancedMode ? '标准模式' : '高级CSS设置';
                 advancedBtn.style.background = config.advancedMode ? '#ffc107' : '#6c757d';
@@ -849,8 +984,11 @@
                 cursor: pointer;
                 font-size: 12px;
             `;
-            selectElementBtn.addEventListener('click', () => {
-                showNotification('请点击页面上要分析的元素');
+            selectElementBtn.addEventListener('click'， () => {
+                // 隐藏主界面面板
+                panel.style.display = 'none';
+                
+                showNotification('请点击页面上要分析的元素（按ESC键或者滑动屏幕可取消）');
                 
                 // 添加临时的点击事件监听器
                 function selectElementHandler(e) {
@@ -862,21 +1000,45 @@
                     
                     // 移除点击事件监听器
                     document.removeEventListener('click', selectElementHandler, true);
+                    document.removeEventListener('keydown', cancelSelectionHandler);
                     
                     // 分析选中元素的CSS
                     const analyzedRules = analyzeContentLeftElements([selectedElement]);
                     createUI(analyzedRules);
                     
                     showNotification('已分析选中元素的CSS属性');
+                    
+                    // 重新显示主界面面板
+                    panel.style.display = 'block';
+                }
+                
+                // 添加ESC键取消选择
+                function cancelSelectionHandler(e) {
+                    if (e.key === 'Escape') {
+                        document.removeEventListener('click', selectElementHandler, true);
+                        document.removeEventListener('keydown', cancelSelectionHandler);
+                        showNotification('选择元素模式已取消');
+                        
+                        // 重新显示主界面面板
+                        panel.style.display = 'block';
+                    }
                 }
                 
                 // 添加全局点击事件监听器
                 document.addEventListener('click', selectElementHandler, true);
+                // 添加ESC键事件监听器
+                document.addEventListener('keydown', cancelSelectionHandler);
                 
                 // 5秒后自动取消选择模式
                 setTimeout(() => {
                     document.removeEventListener('click', selectElementHandler, true);
-                    showNotification('选择元素模式已取消');
+                    document.removeEventListener('keydown', cancelSelectionHandler);
+                    
+                    // 如果面板仍然隐藏（即用户没有选择元素），则显示它
+                    if (panel.style.display === 'none') {
+                        showNotification('选择元素模式已取消');
+                        panel.style.display = 'block';
+                    }
                 }, 5000);
             });
             buttonContainer.appendChild(selectElementBtn);
@@ -981,7 +1143,7 @@
                 ruleContainer.className = 'rule-container css-analyzer-rule-item';
                 ruleContainer.dataset.selector = rule.selector;
                 ruleContainer.dataset.analyzed = 'false'; // 标记为未分析
-                ruleContainer.style.cssText = `
+                ruleContainer。style.cssText = `
                     margin-bottom: 15px;
                     background: #f8f9fa;
                     border-radius: 6px;
@@ -1005,8 +1167,8 @@
                 `;
                 
                 const selectorHeader = document.createElement('h3');
-                selectorHeader.textContent = `选择器: ${rule.selector}`;
-                selectorHeader.style.cssText = `
+                selectorHeader.textContent = `选择器: ${rule。selector}`;
+                selectorHeader.style。cssText = `
                     margin: 0;
                     color: #007bff;
                     font-size: 14px;
@@ -1050,6 +1212,28 @@
                     highlightElement(rule.selector);
                 });
                 
+                // 重置按钮
+                const resetBtn = document.createElement('button');
+                resetBtn.textContent = '重置';
+                resetBtn.style.cssText = `
+                    background: #ffc107;
+                    color: #212529;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    font-size: 10px;
+                `;
+                resetBtn.addEventListener('click', () => {
+                    // 清除该选择器的存储数据
+                    const savedStyles = JSON.parse(localStorage.getItem('css-analyzer-styles') || '{}');
+                    delete savedStyles[rule.selector];
+                    localStorage.setItem('css-analyzer-styles', JSON.stringify(savedStyles));
+                    
+                    // 刷新页面
+                    location.reload();
+                });
+                
                 // 不显示这个容器按钮（在分析界面中隐藏）
                 const hideContainerBtn = document.createElement('button');
                 hideContainerBtn.textContent = '隐藏';
@@ -1064,13 +1248,14 @@
                 `;
                 hideContainerBtn.addEventListener('click', () => {
                     // 在分析界面中隐藏这个规则容器
-                    ruleContainer.style.display = 'none';
+                    ruleContainer.style。display = 'none';
                     showNotification('已在分析界面中隐藏该容器');
                 });
                 
                 actionsContainer.appendChild(toggleBtn);
-                actionsContainer.appendChild(locateBtn);
-                actionsContainer.appendChild(hideContainerBtn);
+                actionsContainer。appendChild(locateBtn);
+                actionsContainer.appendChild(resetBtn);
+                actionsContainer。appendChild(hideContainerBtn);
                 selectorHeaderContainer.appendChild(selectorHeader);
                 selectorHeaderContainer.appendChild(actionsContainer);
                 ruleContainer.appendChild(selectorHeaderContainer);
@@ -1365,6 +1550,115 @@
                 showNotification(`已显示 ${hiddenContainers.length} 个被隐藏的容器`);
             });
             buttonsContainer.appendChild(showHiddenBtn);
+
+            // 创建教程按钮，放在显示被隐藏容器按钮右侧
+            const tutorialBtn = document.createElement('button');
+            tutorialBtn.textContent = '教程';
+            tutorialBtn.style.cssText = `
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                cursor: pointer;
+                font-size: 12px;
+            `;
+            tutorialBtn.addEventListener('click', () => {
+                // 创建一个自定义的弹窗，不会自动消失
+                const tutorialModal = document.createElement('div');
+                tutorialModal.id = 'css-analyzer-tutorial-modal';
+                tutorialModal.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 20px;
+                    max-width: 500px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    z-index: 10001;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                `;
+
+                // 创建标题
+                const modalTitle = document.createElement('h3');
+                modalTitle.textContent = 'CSS属性分析器使用教程';
+                modalTitle.style.cssText = `
+                    margin-top: 0;
+                    margin-bottom: 15px;
+                    color: #007bff;
+                    font-size: 18px;
+                `;
+
+                // 创建教程内容
+                const tutorialContent = document.createElement('div');
+                tutorialContent.style.cssText = `
+                    margin-bottom: 20px;
+                    line-height: 1.6;
+                `;
+                tutorialContent.innerHTML = `
+                    <p style="margin-bottom: 10px;"><strong>功能介绍：</strong></p>
+                    <ol style="margin-bottom: 15px; padding-left: 20px;">
+                        <li style="margin-bottom: 8px;"><strong>刷新按钮：</strong>重新分析页面CSS</li>
+                        <li style="margin-bottom: 8px;"><strong>标准/高级模式：</strong>切换分析模式</li>
+                        <li style="margin-bottom: 8px;"><strong>手动选择元素：</strong>点击页面上的元素进行分析</li>
+                        <li style="margin-bottom: 8px;"><strong>搜索框：</strong>搜索特定选择器</li>
+                        <li style="margin-bottom: 8px;"><strong>定位按钮：</strong>高亮显示对应元素</li>
+                        <li style="margin-bottom: 8px;"><strong>折叠/展开：</strong>查看/隐藏CSS属性详情</li>
+                    </ol>
+                    <p style="margin-bottom: 10px;"><strong>使用提示：</strong></p>
+                    <ul style="padding-left: 20px;">
+                        <li style="margin-bottom: 8px;">点击元素的"定位"按钮可以在页面中高亮显示该元素</li>
+                        <li style="margin-bottom: 8px;">可以直接修改CSS属性值并实时应用到页面</li>
+                        <li style="margin-bottom: 8px;">标准模式下只会分析特定容器内的元素，提高性能</li>
+                        <li style="margin-bottom: 8px;">高级模式下，会显示整个网页的所有的css，对于设备不好的情况下，不建议使用</li>
+                        <li style="margin-bottom: 8px;">重点：数据默认是自动保存的，点击选择器重置按钮，才会重置数据，需要注意，点击重置按钮会刷新一次网页！！！</li>
+                    </ul>
+                `;
+
+                // 创建关闭按钮
+                const closeModalBtn = document.createElement('button');
+                closeModalBtn.textContent = '关闭';
+                closeModalBtn.style.cssText = `
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 8px 16px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    display: block;
+                    margin: 0 auto;
+                `;
+                closeModalBtn.addEventListener('click', () => {
+                    tutorialModal.remove();
+                    modalOverlay.remove();
+                });
+
+                // 创建遮罩层
+                const modalOverlay = document.createElement('div');
+                modalOverlay.id = 'css-analyzer-tutorial-overlay';
+                modalOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 10000;
+                `;
+
+                // 组装弹窗
+                tutorialModal.appendChild(modalTitle);
+                tutorialModal.appendChild(tutorialContent);
+                tutorialModal.appendChild(closeModalBtn);
+                document.body.appendChild(modalOverlay);
+                document.body.appendChild(tutorialModal);
+            });
+            buttonsContainer.appendChild(tutorialBtn);
             
             // 将按钮容器添加到搜索容器下方
             searchContainer.parentNode.insertBefore(buttonsContainer, searchContainer.nextSibling);
@@ -1410,7 +1704,7 @@
         }
         
         // 搜索按钮事件
-        searchBtn.addEventListener('click', () => {
+        searchBtn.addEventListener('click'， () => {
             const keyword = searchInput.value.trim();
             if (keyword) {
                 performSearch(keyword);
@@ -1418,7 +1712,7 @@
         });
         
         // 搜索框回车事件
-        searchInput.addEventListener('keypress', (e) => {
+        searchInput。addEventListener('keypress'， (e) => {
             if (e.key === 'Enter') {
                 const keyword = searchInput.value.trim();
                 if (keyword) {
@@ -1428,16 +1722,16 @@
         });
         
         // 重置按钮事件
-        resetBtn.addEventListener('click', () => {
-            searchInput.value = '';
+        resetBtn。addEventListener('click'， () => {
+            searchInput。value = '';
             const ruleItems = document.querySelectorAll('.css-analyzer-rule-item');
-            ruleItems.forEach(item => {
-                item.style.display = 'block';
+            ruleItems。forEach(item => {
+                item。style.display = 'block';
             });
             
             const statsElement = document.getElementById('css-analyzer-search-stats');
             if (statsElement) {
-                statsElement.remove();
+                statsElement。remove();
             }
         });
     }
@@ -1449,7 +1743,7 @@
         if (!styleSheet) {
             styleSheet = document.createElement('style');
             styleSheet.id = 'css-analyzer-styles';
-            document.head.appendChild(styleSheet);
+            document。head.appendChild(styleSheet);
         }
 
         // 获取现有规则
@@ -1472,8 +1766,74 @@
             styleSheet.sheet.insertRule(`${selector} { ${property}: ${value} !important; }`, existingRules.length);
         }
 
+        // 保存到本地存储
+        saveCSSChanges(selector, property, value);
+
         // 显示应用成功的提示
-        showNotification('CSS属性已更新');
+        showNotification('CSS属性已更新并保存');
+    }
+
+    // 保存CSS更改到本地存储
+    function saveCSSChanges(selector, property, value) {
+        // 获取现有的保存数据
+        const savedStyles = JSON.parse(localStorage.getItem('css-analyzer-styles') || '{}');
+        
+        // 如果该选择器没有保存的数据，创建一个新对象
+        if (!savedStyles[selector]) {
+            savedStyles[selector] = {};
+        }
+        
+        // 保存属性和值
+        savedStyles[selector][property] = value;
+        
+        // 存储回localStorage
+        localStorage.setItem('css-analyzer-styles', JSON.stringify(savedStyles));
+    }
+
+    // 加载保存的CSS更改
+    function loadCSSChanges() {
+        const savedStyles = JSON.parse(localStorage.getItem('css-analyzer-styles') || '{}');
+        
+        // 查找已有的样式表或创建新的
+        let styleSheet = document.getElementById('css-analyzer-styles');
+        if (!styleSheet) {
+            styleSheet = document.createElement('style');
+            styleSheet.id = 'css-analyzer-styles';
+            document.head.appendChild(styleSheet);
+        }
+        
+        // 应用所有保存的样式
+        Object.keys(savedStyles).forEach(selector => {
+            const properties = savedStyles[selector];
+            Object.keys(properties).forEach(property => {
+                const value = properties[property];
+                
+                // 创建规则字符串
+                const ruleText = `${selector} { ${property}: ${value} !important; }`;
+                
+                // 检查是否已有该规则
+                let ruleExists = false;
+                const existingRules = styleSheet.sheet.cssRules;
+                
+                for (let i = 0; i < existingRules.length; i++) {
+                    const rule = existingRules[i];
+                    if (rule.type === CSSRule.STYLE_RULE && rule.selectorText === selector && 
+                        rule.style.getPropertyValue(property) === value) {
+                        ruleExists = true;
+                        break;
+                    }
+                }
+                
+                // 如果规则不存在，添加它
+                if (!ruleExists) {
+                    try {
+                        styleSheet.sheet.insertRule(ruleText, existingRules.length);
+                    } catch (e) {
+                        console.error('Failed to load saved CSS rule:', ruleText, e);
+                    }
+                }
+            });
+        });
     }
 
     // 显示通知
@@ -1495,7 +1855,7 @@
 
         // 添加动画
         const style = document.createElement('style');
-        style.textContent = `
+        style。textContent = `
             @keyframes fadeInOut {
                 0% { opacity: 0; transform: translate(-50%, -20px); }
                 20% { opacity: 1; transform: translate(-50%, 0); }
@@ -1503,30 +1863,34 @@
                 100% { opacity: 0; transform: translate(-50%, -20px); }
             }
         `;
-        document.head.appendChild(style);
+        document.head。appendChild(style);
 
-        document.body.appendChild(notification);
+        document。body。appendChild(notification);
 
         // 2秒后移除通知
         setTimeout(() => {
-            notification.remove();
-            style.remove();
-        }, 2000);
+            notification。remove();
+            style。remove();
+        }， 2000);
     }
 
     // 注册油猴菜单命令
-    GM_registerMenuCommand('启动CSS属性分析器', () => {
+    GM_registerMenuCommand('启动CSS属性分析器'， () => {
         const analyzedRules = findContentLeftCSS();
         createUI(analyzedRules);
+        // 加载保存的CSS更改
+        loadCSSChanges();
     });
 
     // 添加快捷键支持
-    document.addEventListener('keydown', (e) => {
+    document。addEventListener('keydown'， (e) => {
         // Ctrl+Alt+C 启动分析器
-        if (e.ctrlKey && e.altKey && e.key === 'c') {
-            e.preventDefault();
+        if (e。ctrlKey && e。altKey && e。key === 'c') {
+            e。preventDefault();
             const analyzedRules = findContentLeftCSS();
             createUI(analyzedRules);
+            // 加载保存的CSS更改
+            loadCSSChanges();
         }
     });
 
