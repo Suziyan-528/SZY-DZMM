@@ -716,6 +716,23 @@
                 container.id = this.collapsibleId;
                 container.className = 'collapsible-container';
 
+                // 检查CSS属性分析器是否已安装
+                const checkCssAnalyzerInstalled = () => {
+                    return !!(window.cssPropertyAnalyzer || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.cssPropertyAnalyzer : null));
+                };
+                
+                // 获取下载链接 - 使用GitHub的latest端点自动重定向到最新版本
+                const getUpdateUrl = () => {
+                    // 使用/releases/latest可以自动重定向到最新版本，无需硬编码版本号
+                    return "https://github.com/Suziyan-528/SZY-DZMM/releases/latest";
+                };
+                
+                const isInstalled = checkCssAnalyzerInstalled();
+                const buttonText = isInstalled ? '🎨 启动CSS属性分析器' : '🎨 前往下载';
+                const buttonStyle = isInstalled ? 
+                    'background-color: #28a745; color: white; cursor: pointer;' : 
+                    'background-color: #6c757d; color: white; cursor: pointer;';
+                
                 container.innerHTML = `
                     <div class="collapsible-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 8px; cursor: pointer;">
                         <span>🛠️ 拓展功能</span>
@@ -724,7 +741,7 @@
                     <div class="collapsible-content" style="display:none">
                         <div style="display: flex; flex-direction: column; gap:10px;padding:10px;">
                             <p style="font-size: 12px; color: #888;">提示：以下功能可能影响页面结构，请谨慎使用。</p>
-        
+
                             <!-- 注入快捷屏蔽菜单 -->
                             <label style="display: flex; align-items: center; gap: 8px;">
                                 <input type="checkbox" id="toggle-inject-quick-shield" ${this.state.injectQuickShield ? 'checked' : ''} style="display: none;">
@@ -734,42 +751,40 @@
                                 <span>注入快捷屏蔽菜单</span>
                             </label>
 
-                            <!-- 启动CSS属性分析器 -->
+                            <!-- CSS属性分析器按钮 -->
                             <button id="start-css-analyzer" style="
                                 padding: 8px 16px;
-                                background-color: #28a745;
-                                color: white;
+                                ${buttonStyle}
                                 border: none;
                                 border-radius: 4px;
-                                cursor: pointer;
                                 font-size: 14px;
                                 transition: background-color 0.3s;
                             ">
-                                🎨 启动CSS属性分析器
+                                ${buttonText}
                             </button>
                         </div>
                     </div>
                 `;
 
                 // 添加到面板中
-                    // 获取所有折叠容器
-    const collapsibleContainers = panel.querySelectorAll('.collapsible-container');
-    // 定位到第二个折叠容器（标签屏蔽容器）
-    const tagShieldContainer = collapsibleContainers[1];
-    // 找到导入导出工具
-    const importExportTools = panel.querySelector('.shield-import-export-tools');
-                 // 插入逻辑：
-    if (tagShieldContainer) {
-        // 在标签屏蔽容器后插入拓展功能容器
-        tagShieldContainer.after(container);
-        // 如果存在导入导出工具，确保其在拓展功能容器之后
-        if (importExportTools) {
-            container.after(importExportTools);
-        }
-    } else {
-        // 备用方案：插入到面板末尾（应尽量避免）
-        panel.appendChild(container);
-    }
+                // 获取所有折叠容器
+                const collapsibleContainers = panel.querySelectorAll('.collapsible-container');
+                // 定位到第二个折叠容器（标签屏蔽容器）
+                const tagShieldContainer = collapsibleContainers[1];
+                // 找到导入导出工具
+                const importExportTools = panel.querySelector('.shield-import-export-tools');
+                // 插入逻辑：
+                if (tagShieldContainer) {
+                    // 在标签屏蔽容器后插入拓展功能容器
+                    tagShieldContainer.after(container);
+                    // 如果存在导入导出工具，确保其在拓展功能容器之后
+                    if (importExportTools) {
+                        container.after(importExportTools);
+                    }
+                } else {
+                    // 备用方案：插入到面板末尾（应尽量避免）
+                    panel.appendChild(container);
+                }
 
                 // 折叠展开逻辑
                 const header = container.querySelector('.collapsible-header');
@@ -780,6 +795,43 @@
                     content.style.display = isHidden ? 'block' : 'none';
                     arrow.textContent = isHidden ? '▼' : '▶';
                 });
+                
+                // 为CSS分析器按钮添加点击事件
+                const cssAnalyzerBtn = container.querySelector('#start-css-analyzer');
+                if (cssAnalyzerBtn) {
+                    cssAnalyzerBtn.addEventListener('click', () => {
+                        // 检查是否已安装
+                        const isInstalled = checkCssAnalyzerInstalled();
+                        if (isInstalled) {
+                            // 已安装，启动CSS属性分析器
+                            this.startCssAnalyzer();
+                        } else {
+                            // 未安装，显示确认弹窗后跳转到下载页面
+                            if (confirm('CSS属性分析器尚未安装，是否前往下载页面？')) {
+                                window.open(getUpdateUrl(), '_blank');
+                            }
+                        }
+                    });
+                    
+                    // 添加鼠标悬停效果，根据按钮当前状态显示不同效果
+                    cssAnalyzerBtn.addEventListener('mouseover', () => {
+                        const isInstalled = checkCssAnalyzerInstalled();
+                        if (isInstalled) {
+                            cssAnalyzerBtn.style.backgroundColor = '#218838';
+                        } else {
+                            cssAnalyzerBtn.style.backgroundColor = '#5a6268';
+                        }
+                    });
+                    
+                    cssAnalyzerBtn.addEventListener('mouseout', () => {
+                        const isInstalled = checkCssAnalyzerInstalled();
+                        if (isInstalled) {
+                            cssAnalyzerBtn.style.backgroundColor = '#28a745';
+                        } else {
+                            cssAnalyzerBtn.style.backgroundColor = '#6c757d';
+                        }
+                    });
+                }
 
                 // 切换事件绑定
                 const quickToggle = container.querySelector('#toggle-inject-quick-shield');
@@ -805,51 +857,122 @@
                     this.enableQuickShield();
                 }
 
-                // 添加CSS属性分析器按钮点击事件
-                const cssAnalyzerButton = container.querySelector('#start-css-analyzer');
-                if (cssAnalyzerButton) {
-                    cssAnalyzerButton.addEventListener('click', () => {
-                        this.startCssAnalyzer();
-                    });
-                    
-                    // 添加鼠标悬停效果
-                    cssAnalyzerButton.addEventListener('mouseover', () => {
-                        cssAnalyzerButton.style.backgroundColor = '#218838';
-                    });
-                    
-                    cssAnalyzerButton.addEventListener('mouseout', () => {
-                        cssAnalyzerButton.style.backgroundColor = '#28a745';
-                    });
-                }
-
                 this.injectStyles();
             }
 
             // 启动CSS属性分析器
             startCssAnalyzer() {
-                // 检查是否已加载CSS属性分析器
-                if (window.cssPropertyAnalyzer && window.cssPropertyAnalyzer.initialize) {
-                    // 如果已加载，直接调用初始化函数
-                    window.cssPropertyAnalyzer.initialize();
-                } else {
-                    // 如果未加载，动态加载并执行CSS属性分析器脚本
-                    const scriptUrl = 'd:\\Desktop\\电子猫猫工具箱\\CSS属性分析器.user.js';
-                    
-                    // 创建一个通知告知用户正在启动CSS属性分析器
-                    this.showNotification('正在启动CSS属性分析器...');
-                    
-                    // 在实际环境中，由于浏览器安全限制，直接加载本地文件可能会失败
-                    // 这里提供两种方案：
-                    // 1. 方案一：尝试直接打开CSS属性分析器脚本（适合本地开发环境）
-                    try {
-                        // 由于安全限制，直接加载本地脚本可能无法实现
-                        // 这里提供一个提示，告知用户如何手动启动CSS属性分析器
-                        this.showNotification('请使用油猴菜单或快捷键Ctrl+Alt+C启动CSS属性分析器');
-                    } catch (error) {
-                        console.error('启动CSS属性分析器失败:', error);
-                        this.showNotification('启动CSS属性分析器失败，请使用油猴菜单启动');
+                // 添加调试信息
+                console.log('CSS属性分析器启动尝试:', {
+                    windowCssAnalyzer: !!window.cssPropertyAnalyzer,
+                    windowInitialize: typeof window.cssPropertyAnalyzer?.initialize,
+                    unsafeWindowExists: typeof unsafeWindow !== 'undefined',
+                    unsafeWindowCssAnalyzer: unsafeWindow ? !!unsafeWindow.cssPropertyAnalyzer : 'N/A',
+                    unsafeWindowInitialize: unsafeWindow ? typeof unsafeWindow.cssPropertyAnalyzer?.initialize : 'N/A'
+                });
+                
+                // 重试逻辑 - 尝试多次检测并启动
+                let retryCount = 0;
+                const maxRetries = 5;
+                
+                // 尝试查找工具箱面板并获取其显示状态
+                const getShieldPanel = () => {
+                    return document.getElementById('smart-shield-panel');
+                };
+                
+                // 隐藏工具箱面板
+                const hideShieldPanel = () => {
+                    const panel = getShieldPanel();
+                    if (panel) {
+                        panel.dataset.previousDisplay = panel.style.display; // 保存之前的显示状态
+                        panel.style.display = 'none';
+                        console.log('工具箱面板已隐藏');
                     }
-                }
+                };
+                
+                // 显示工具箱面板
+                const showShieldPanel = () => {
+                    const panel = getShieldPanel();
+                    if (panel && panel.dataset.previousDisplay) {
+                        panel.style.display = panel.dataset.previousDisplay;
+                        delete panel.dataset.previousDisplay;
+                        console.log('工具箱面板已重新显示');
+                    }
+                };
+                
+                const tryInitialize = () => {
+                    retryCount++;
+                    console.log(`启动尝试 #${retryCount}`);
+                    
+                    // 尝试获取CSS属性分析器（优先从window获取，然后尝试unsafeWindow）
+                    const cssAnalyzer = window.cssPropertyAnalyzer || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.cssPropertyAnalyzer : null);
+                    
+                    if (cssAnalyzer && typeof cssAnalyzer.initialize === 'function') {
+                        try {
+                            // 启动CSS属性分析器
+                            cssAnalyzer.initialize();
+                            console.log('CSS属性分析器初始化成功');
+                            
+                            // 自动隐藏工具箱面板
+                            hideShieldPanel();
+                            this.showNotification('CSS属性分析器已启动，工具箱已隐藏');
+                            
+                            // 监听CSS属性分析器UI关闭事件，以便重新显示工具箱
+                            const checkCssAnalyzerClose = () => {
+                                // 检查CSS属性分析器UI是否存在
+                                const cssAnalyzerUI = document.querySelector('#css-analyzer-panel');
+                                
+                                if (!cssAnalyzerUI) {
+                                    // CSS属性分析器UI已关闭，重新显示工具箱
+                                    showShieldPanel();
+                                    this.showNotification('CSS属性分析器已关闭，工具箱已重新显示');
+                                    console.log('检测到CSS属性分析器关闭');
+                                } else {
+                                    // 继续检查
+                                    setTimeout(checkCssAnalyzerClose, 500);
+                                }
+                            };
+                            
+                            // 开始检查CSS属性分析器是否关闭
+                            setTimeout(checkCssAnalyzerClose, 1000);
+                        } catch (error) {
+                            console.error('启动CSS属性分析器失败:', error);
+                            this.showNotification('启动CSS属性分析器时发生错误: ' + error.message);
+                        }
+                    } else if (retryCount < maxRetries) {
+                        // 继续重试，增加间隔时间
+                        const delay = 300 * Math.pow(1.5, retryCount - 1); // 指数退避策略
+                        console.log(`未检测到分析器，${Math.round(delay)}ms后重试`);
+                        setTimeout(tryInitialize, delay);
+                    } else {
+                        // 重试次数用完，提供详细提示
+                        console.log('多次尝试后仍未检测到CSS属性分析器');
+                        
+                        // 检查详细状态
+                        if (!cssAnalyzer) {
+                            this.showNotification('未检测到CSS属性分析器');
+                            setTimeout(() => {
+                                this.showNotification('请确保已安装CSS属性分析器脚本并刷新页面后重试');
+                            }, 1500);
+                            setTimeout(() => {
+                                this.showNotification('请检查油猴脚本管理器中两个脚本是否都已启用');
+                            }, 3000);
+                        } else if (typeof cssAnalyzer.initialize !== 'function') {
+                            this.showNotification('检测到CSS属性分析器但初始化函数不可用');
+                            setTimeout(() => {
+                                this.showNotification('请确保使用了最新版本的CSS属性分析器脚本');
+                            }, 1500);
+                        }
+                        
+                        // 提示用户可以使用油猴菜单或快捷键
+                        setTimeout(() => {
+                            this.showNotification('您也可以使用油猴菜单或快捷键Ctrl+Alt+C启动CSS属性分析器');
+                        }, 4500);
+                    }
+                };
+                
+                // 立即开始第一次尝试
+                tryInitialize();
             }
             
             // 显示通知
@@ -1264,6 +1387,9 @@
         }
         // 应用面板样式
         applyPanelStyle() {
+            // 检查用户偏好的主题模式
+            const isDarkMode = GM_getValue('darkMode', false);
+            
             GM_addStyle(`
                 #smart-shield-panel {
                     position: fixed !important;
@@ -1281,6 +1407,85 @@
                     height: auto !important;
                     flex-direction: column !important;
                     overflow: hidden !important;
+                    transition: background-color 0.3s ease, color 0.3s ease;
+                }
+                
+                /* 夜间模式样式 */
+                #smart-shield-panel.dark-mode {
+                    background: #2d3748 !important;
+                    color: #e2e8f0 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .shield-tab {
+                    border-bottom: 1px solid #4a5568 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .shield-tab button {
+                    background: #4a5568 !important;
+                    color: #e2e8f0 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .shield-tab button.active {
+                    background: #3182ce !important;
+                }
+                
+                #smart-shield-panel.dark-mode .shield-input input {
+                    background: #4a5568 !important;
+                    border: 1px solid #718096 !important;
+                    color: #e2e8f0 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .shield-input input::placeholder {
+                    color: #a0aec0 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .shield-list li {
+                    background: #4a5568 !important;
+                    color: #e2e8f0 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .collapsible-container {
+                    border: 1px solid #4a5568 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .panel-scroll-container::-webkit-scrollbar-track {
+                    background: #2d3748 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .panel-scroll-container::-webkit-scrollbar-thumb {
+                    background: #718096 !important;
+                }
+                
+                #smart-shield-panel.dark-mode .panel-scroll-container::-webkit-scrollbar-thumb:hover {
+                    background: #a0aec0 !important;
+                }
+                
+                /* 模式切换开关样式 */
+                .mode-toggle-wrapper {
+                    position: absolute;
+                    bottom: 20px;
+                    right: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    z-index: 10;
+                }
+                
+                .mode-toggle-icon {
+                    font-size: 14px;
+                    display: inline-block;
+                }
+                
+                .toggle-switch-wrapper {
+                    position: relative;
+                    display: inline-block;
+                }
+                
+                /* 隐藏原生复选框 */
+                .mode-toggle-checkbox {
+                    opacity: 0;
+                    width: 0;
+                    height: 0;
                 }
                 .shield-tab {
                     padding: 12px;
@@ -1293,13 +1498,13 @@
                     padding: 8px 16px;
                     border-radius: 6px;
                     border: none;
-                    background: #f5f5f5;
+                    background: #e0e0e0;
                     cursor: pointer;
                     transition: all 0.2s;
                     
                 }
                 .shield-tab button.active {
-                    background: #007bff;
+                    background: #0066cc;
                     color: white;
                     
                 }
@@ -1590,18 +1795,23 @@
         // 构建面板 UI
         buildPanelUI() {
             const versionInfo = document.createElement('div');
+            versionInfo.className = 'panel-version';
             versionInfo.style.cssText = `
                     padding: 12px;
                     text-align: center;
                     font-size: 1.1em;
-                    color: rgba(128,128,128,0.5);
                 `;
             versionInfo.textContent = `电子猫猫工具箱${CURRENT_VERSION} | tg@苏子言`;
+            // 应用默认颜色
+            versionInfo.style.color = '#333';
             // 关闭按钮
             const closeBtn = document.createElement('button');
             closeBtn.className = 'panel-close';
             closeBtn.textContent = '×';
             closeBtn.onclick = () => this.togglePanel();
+            
+            // 创建日夜间模式切换开关
+            this.createModeToggle();
             
             // 创建滚动容器来包裹所有内容面板
             const scrollContainer = document.createElement('div');
@@ -1663,8 +1873,97 @@
             
             // 导入导出工具
             const tools = this.buildImportExport();
-            // 组装面板
-            this.panel.append(versionInfo, closeBtn, scrollContainer, tools);
+            
+            // 创建日夜间模式切换开关
+            const modeToggle = this.createModeToggle();
+            
+            // 将日夜间模式开关添加到导入导出工具区域
+            if (modeToggle && tools) {
+                // 先清空工具容器
+                while (tools.firstChild) {
+                    tools.removeChild(tools.firstChild);
+                }
+                
+                // 创建flex容器 - 调整为左侧按钮，右侧开关，整体向上移动5px
+                const toolsWrapper = document.createElement('div');
+                toolsWrapper.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-start;
+                    gap: 10px;
+                `;
+                
+                // 左侧容器 - 放置导入导出按钮
+                const leftContainer = document.createElement('div');
+                leftContainer.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                `;
+                
+                // 右侧容器 - 放置模式切换开关
+                const rightContainer = document.createElement('div');
+                rightContainer.style.cssText = `
+                    display: flex;
+                    margin-top: -13px;
+                    align-items: center;
+                    margin-left: -10px; /* 日夜切换开关向左移动10px */
+                `;
+                
+                // 重新创建导出按钮
+                const exportButton = document.createElement('button');
+                exportButton.style.border = 'none';
+                exportButton.style.background = 'transparent';
+                exportButton.innerHTML = `
+                <span style="display: inline-block;
+                    padding: 6px 12px;
+                    background: #4682B4;
+                    color: white;
+                    border-radius: 4px;
+                    cursor: pointer;">
+                    导出配置
+                `;
+                exportButton.addEventListener('click', () => this.exportConfig());
+                
+                // 重新创建导入按钮
+                const importButton = document.createElement('button');
+                importButton.style.border = 'none';
+                importButton.style.background = 'transparent';
+                importButton.innerHTML = `
+                <span style="display: inline-block;
+                    padding: 6px 12px;
+                    background: #4682B4;
+                    color: white;
+                    border-radius: 4px;
+                    cursor: pointer;">
+                    导入配置
+                `;
+                const importInput = document.createElement('input');
+                importInput.type = 'file';
+                importInput.accept = '.json';
+                importInput.style.display = 'none';
+                document.body.appendChild(importInput);
+                importButton.addEventListener('click', () => importInput.click());
+                importInput.addEventListener('change', (e) => this.importConfig(e));
+                
+                // 将按钮和开关添加到对应容器
+                leftContainer.appendChild(exportButton);
+                leftContainer.appendChild(importButton);
+                rightContainer.appendChild(modeToggle);
+                
+                // 将左右容器添加到主包装器
+                toolsWrapper.appendChild(leftContainer);
+                toolsWrapper.appendChild(rightContainer);
+                
+                // 将包装器添加到工具容器
+                tools.appendChild(toolsWrapper);
+            }
+            
+            // 构建面板
+                this.panel.append(versionInfo, closeBtn, scrollContainer, tools);
+                
+                // 应用用户上次保存的主题模式
+                this.applySavedTheme();
             
             // 确保所有折叠容器都在滚动区域内
             // 延迟执行，确保TagShield和ChatMultiFunction的UI已经注入
@@ -1704,6 +2003,12 @@
             input.placeholder = `添加${cfg.label}关键词`;
             const addBtn = document.createElement('button');
             addBtn.textContent = '添加';
+            addBtn.style.background = '#1e7e34';
+            addBtn.style.color = 'white';
+            addBtn.style.border = 'none';
+            addBtn.style.borderRadius = '4px';
+            addBtn.style.padding = '8px 16px';
+            addBtn.style.cursor = 'pointer';
             addBtn.onclick = () => this.handleAddKey(key, input);
             // 关键词列表
             const list = document.createElement('ul');
@@ -1837,6 +2142,248 @@
                 }
             });
         }
+        
+        // 检查并创建日夜间模式切换开关（与CSS分析器共用）
+        createModeToggle() {
+            // 检查是否已有CSS分析器的开关存在
+            let modeToggle = document.getElementById('css-analyzer-mode-toggle');
+            
+            // 移除旧的固定位置开关
+            if (modeToggle && modeToggle.parentElement === document.body) {
+                modeToggle.remove();
+                modeToggle = null;
+            }
+            
+            if (!modeToggle) {
+                // 创建一个新的开关
+                modeToggle = document.createElement('div');
+                modeToggle.id = 'css-analyzer-mode-toggle';
+                modeToggle.className = 'toggle-switch';
+                modeToggle.style.cssText = `
+                    display: inline-block;
+                    margin-left: 10px;
+                    vertical-align: middle;
+                    background: transparent;
+                `;
+
+                const toggleInput = document.createElement('input');
+                toggleInput.id = 'css-analyzer-dark-mode';
+                toggleInput.type = 'checkbox';
+                toggleInput.style.display = 'none';
+
+                const toggleLabel = document.createElement('label');
+                toggleLabel.htmlFor = 'css-analyzer-dark-mode';
+                toggleLabel.style.cssText = `
+                    display: inline-block;
+                    position: relative;
+                    width: 60px;
+                    height: 30px;
+                    background: linear-gradient(145deg, #f0f0f0, #d1d1d1);
+                    border-radius: 30px;
+                    cursor: pointer;
+                    box-shadow: 3px 3px 6px #bebebe, -3px -3px 6px #ffffff;
+                    transition: all 0.3s ease;
+                    vertical-align: middle;
+                `;
+
+                const toggleSlider = document.createElement('div');
+                toggleSlider.className = 'toggle-slider';
+                toggleSlider.style.cssText = `
+                    position: absolute;
+                    top: 3px;
+                    left: 3px;
+                    width: 24px;
+                    height: 24px;
+                    background: white;
+                    border-radius: 50%;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                `;
+
+                const toggleSun = document.createElement('div');
+                toggleSun.style.cssText = `
+                    position: absolute;
+                    top: 50%;
+                    left: 8px;
+                    transform: translateY(-50%);
+                    color: #ffc107;
+                    font-size: 12px;
+                `;
+                toggleSun.textContent = '☀️';
+
+                const toggleMoon = document.createElement('div');
+                toggleMoon.style.cssText = `
+                    position: absolute;
+                    top: 50%;
+                    right: 8px;
+                    transform: translateY(-50%);
+                    color: #6c757d;
+                    font-size: 12px;
+                `;
+                toggleMoon.textContent = '🌙';
+
+                toggleLabel.appendChild(toggleSlider);
+                toggleLabel.appendChild(toggleSun);
+                toggleLabel.appendChild(toggleMoon);
+                modeToggle.appendChild(toggleInput);
+                modeToggle.appendChild(toggleLabel);
+            }
+
+            // 直接获取创建的元素，不再通过DOM查找
+            const toggleInput = modeToggle.querySelector('#css-analyzer-dark-mode');
+            const toggleSlider = modeToggle.querySelector('.toggle-slider');
+            const toggleLabel = modeToggle.querySelector('label');
+            const toggleSun = modeToggle.querySelector('div:nth-child(2)');
+            const toggleMoon = modeToggle.querySelector('div:nth-child(3)');
+
+            // 移除旧的事件监听器，避免重复绑定
+            const newToggleInput = toggleInput.cloneNode(true);
+            toggleInput.parentNode.replaceChild(newToggleInput, toggleInput);
+
+            // 添加切换事件监听
+            newToggleInput.addEventListener('change', () => {
+                this.toggleDarkMode(newToggleInput.checked);
+                
+                // 更新开关样式
+                if (newToggleInput.checked && toggleSlider && toggleLabel && toggleSun && toggleMoon) {
+                    toggleSlider.style.left = '33px';
+                    toggleSlider.style.background = '#6c757d';
+                    toggleLabel.style.background = 'linear-gradient(145deg, #2d2d2d, #1f1f1f)';
+                    toggleLabel.style.boxShadow = '3px 3px 6px #1a1a1a, -3px -3px 6px #333333';
+                    toggleSun.style.color = '#6c757d';
+                    toggleMoon.style.color = '#ffc107';
+                } else if (toggleSlider && toggleLabel && toggleSun && toggleMoon) {
+                    toggleSlider.style.left = '3px';
+                    toggleSlider.style.background = 'white';
+                    toggleLabel.style.background = 'linear-gradient(145deg, #f0f0f0, #d1d1d1)';
+                    toggleLabel.style.boxShadow = '3px 3px 6px #bebebe, -3px -3px 6px #ffffff';
+                    toggleSun.style.color = '#ffc107';
+                    toggleMoon.style.color = '#6c757d';
+                }
+            });
+
+            // 应用保存的主题
+            this.applySavedTheme();
+            
+            // 返回创建的开关元素
+            return modeToggle;
+        }
+
+        // 切换日夜间模式
+        toggleDarkMode(isDark) {
+            const panel = document.getElementById('smart-shield-panel');
+            if (!panel) return;
+
+            // 切换面板样式
+            if (isDark) {
+                panel.classList.add('dark-mode');
+                panel.style.background = '#1a1a1a';
+                panel.style.color = '#e0e0e0';
+                panel.style.borderColor = '#333';
+                panel.style.scrollbarColor = '#444 #222';
+            } else {
+                panel.classList.remove('dark-mode');
+                panel.style.background = 'white';
+                panel.style.color = '#333';
+                panel.style.borderColor = '#ddd';
+                panel.style.scrollbarColor = '#007bff #f0f0f0';
+            }
+
+            // 更新标题和内容颜色
+            const title = panel.querySelector('.collapsible-header');
+            if (title) {
+                title.style.color = isDark ? 'white' : '#333';
+                // 根据模式设置箭头颜色
+                const arrow = title.querySelector('.arrow');
+                if (arrow) {
+                    arrow.style.color = isDark ? 'white' : '#333';
+                }
+            }
+
+            const versionInfo = panel.querySelector('.panel-version');
+            if (versionInfo) {
+                versionInfo.style.color = isDark ? 'rgb(0, 123, 255)' : '#333';
+            }
+
+            // 更新按钮颜色
+            const buttons = panel.querySelectorAll('button');
+            buttons.forEach(button => {
+                const originalBg = button.style.background || '';
+                if (originalBg.includes('#dc3545')) {
+                    // 关闭按钮
+                    button.style.background = isDark ? '#c82333' : '#dc3545';
+                } else if (originalBg.includes('#28a745')) {
+                    // 添加按钮
+                    button.style.background = isDark ? '#218838' : '#1e7e34';
+                } else if (originalBg.includes('#ADD8E6')) {
+                    // 导入导出按钮
+                    button.style.background = isDark ? '#4682B4' : '#4682B4';
+                }
+                // 确保标签屏蔽相关按钮的文字颜色保持白色
+                if (button.closest('.shield-import-export-tools') || button.closest('.shield-tab') || button.textContent === '添加') {
+                    button.style.color = 'white';
+                }
+            });
+            
+            // 确保标签屏蔽的字体颜色保持白色
+            const shieldLabels = panel.querySelectorAll('.shield-content, .shield-list, .content-panel');
+            shieldLabels.forEach(label => {
+                if (label.nodeName === 'SPAN') {
+                    label.style.color = 'white';
+                }
+            });
+
+            // 更新输入框样式
+            const inputs = panel.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.style.background = isDark ? '#3a3a3a' : 'white';
+                input.style.color = isDark ? '#e0e0e0' : '#333';
+                input.style.borderColor = isDark ? '#555' : '#ced4da';
+            });
+
+            // 保存主题设置
+            localStorage.setItem('css-analyzer-theme', isDark ? 'dark' : 'light');
+        }
+
+        // 应用保存的主题
+        applySavedTheme() {
+            // 从localStorage获取保存的主题设置，如果没有则默认为light
+            const savedTheme = localStorage.getItem('css-analyzer-theme') || 'light';
+            const isDark = savedTheme === 'dark';
+            
+            const toggleInput = document.getElementById('css-analyzer-dark-mode');
+            if (toggleInput) {
+                toggleInput.checked = isDark;
+            }
+            
+            // 更新开关样式
+            const toggleSlider = document.querySelector('.toggle-slider');
+            const toggleLabel = document.querySelector('#css-analyzer-mode-toggle label');
+            const toggleSun = document.querySelector('#css-analyzer-mode-toggle div:nth-child(2)');
+            const toggleMoon = document.querySelector('#css-analyzer-mode-toggle div:nth-child(3)');
+            
+            if (isDark) {
+                if (toggleSlider) toggleSlider.style.left = '33px';
+                if (toggleSlider) toggleSlider.style.background = '#6c757d';
+                if (toggleLabel) toggleLabel.style.background = 'linear-gradient(145deg, #2d2d2d, #1f1f1f)';
+                if (toggleLabel) toggleLabel.style.boxShadow = '3px 3px 6px #1a1a1a, -3px -3px 6px #333333';
+                if (toggleSun) toggleSun.style.color = '#6c757d';
+                if (toggleMoon) toggleMoon.style.color = '#ffc107';
+            } else {
+                if (toggleSlider) toggleSlider.style.left = '3px';
+                if (toggleSlider) toggleSlider.style.background = 'white';
+                if (toggleLabel) toggleLabel.style.background = 'linear-gradient(145deg, #f0f0f0, #d1d1d1)';
+                if (toggleLabel) toggleLabel.style.boxShadow = '3px 3px 6px #bebebe, -3px -3px 6px #ffffff';
+                if (toggleSun) toggleSun.style.color = '#ffc107';
+                if (toggleMoon) toggleMoon.style.color = '#6c757d';
+            }
+
+            // 如果面板已存在，应用主题
+            const panel = document.getElementById('smart-shield-panel');
+            if (panel) {
+                this.toggleDarkMode(isDark);
+            }
+        }
         // 构建导入导出工具
         buildImportExport() {
             
@@ -1851,7 +2398,7 @@
             exportButton.innerHTML = `
             <span style="display: inline-block;
                 padding: 6px 12px;
-                background: #ADD8E6;
+                background: #4682B4;
                 color: white;
                 border-radius: 4px;
                 cursor: pointer;">
@@ -1873,7 +2420,7 @@
             importLabel.innerHTML = `
             <span style="display: inline-block;
                 padding: 6px 12px;
-                background: #ADD8E6;
+                background: #4682B4;
                 color: white;
                 border-radius: 4px;
                 cursor: pointer;">
@@ -1950,11 +2497,7 @@
             reader.readAsText(file);
         }
     }
-    // 导入后更新复选框状态
-    document.querySelectorAll('#toggle-author-tag, #toggle-usage-tag, #toggle-origin-tag').forEach(checkbox => {
-        const key = checkbox.id.replace('toggle-', '').replace('-tag', '');
-        checkbox.checked = tagShield.state[`hide${key.charAt(0).toUpperCase() + key.slice(1)}`];
-    });
+    // 移除这段有问题的代码，因为tagShield变量未在这个作用域中定义
     /* =========================== 初始化系统 =========================== */
     let initialized = false;
     let updateTimer = null;
