@@ -14,7 +14,7 @@
 三、加载脚本   
 一键安装链接：[点击一键安装](https://raw.githubusercontent.com/Suziyan-528/SZY-DZMM/refs/heads/main/%E7%94%B5%E5%AD%90%E7%8C%AB%E7%8C%AB%E6%99%BA%E8%83%BD%E5%B7%A5%E5%85%B7%E7%AE%B1/%E6%99%BA%E8%83%BD%E5%B7%A5%E5%85%B7%E7%AE%B1.user.js)    
 手动安装：  
-1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V6.0.0)   
+1.下载脚本：[点击下载文件](https://github.com/Suziyan-528/SZY-DZMM/releases/tag/V6.0.1)   
 2.点击已经安装好的油猴插件，然后选择添加脚本   
 3.选择右上角的实用工具-导入文件   
 4.导入你提前下载好的文件，注意文件后缀是.user.js   
