@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         猫猫岛智能工具箱-正式完整版
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      6.0.0
-// @description  新增CSS属性分析器，能够本地调整状态栏样式
+// @version      6.0.1
+// @description  修复一些bug，但还有一些影响不是很大的bug
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
 // @match        *://*.sexyai.top/*
@@ -273,7 +273,7 @@
                 hideUsageTag: GM_getValue(this.STORAGE_KEYS.usageTag, false),
                 hideOriginTag: GM_getValue(this.STORAGE_KEYS.originTag, false),
                 hideScoreTag: GM_getValue(this.STORAGE_KEYS.scoreTag, false),
-                hideImageTag: false // 强制设置为false，确保初始状态不会屏蔽图片
+                hideImageTag: GM_getValue(this.STORAGE_KEYS.imageTag, false) // 从存储中读取图片屏蔽状态
             };
             // 初始化注入标记
             this.injected = false;
@@ -296,7 +296,7 @@
             
             // 只有在明确指定时才自动执行屏蔽
             if (autoExecute) {
-                this.execute();
+                this.initializeShield(); // 使用新的初始化方法，确保图片屏蔽功能与其他标签屏蔽功能的隔离
             }
         }
         // 尝试注入UI，增加了更严格的检查
@@ -314,67 +314,255 @@
         }
         // 执行标签屏蔽
         execute() {
+            // 处理非图片相关的标签屏蔽
+            this.executeNonImageShield();
+            
+            // 单独处理图片屏蔽，完全隔离
+            this.executeImageShield();
+            
+            this.injectStyle(); // 注入样式
+        }
+        
+        // 初始化时调用此方法，确保所有标签屏蔽选项正确应用
+        initializeShield() {
+            console.log('[标签屏蔽] 初始化屏蔽设置，当前状态:', JSON.stringify(this.state));
+            
+            // 强制刷新DOM元素查询
+            const forceRefresh = true;
+            
+            // 注入样式 - 先注入样式，确保CSS规则已准备好
+            this.injectStyle();
+            
+            // 先执行非图片相关的标签屏蔽
+            if (this.state.hideAuthorTag || this.state.hideUsageTag || this.state.hideScoreTag || this.state.hideOriginTag) {
+                this.executeNonImageShield();
+            }
+            
+            // 再单独处理图片屏蔽 - 只有当明确设置了hideImageTag为true时才执行
+            if (this.state.hideImageTag === true) {
+                this.executeImageShield();
+            } else {
+                console.log('[标签屏蔽] 图片屏蔽未启用，跳过图片屏蔽初始化');
+            }
+            
+            // 确保样式被正确应用
+            setTimeout(() => {
+                console.log('[标签屏蔽] 延迟检查屏蔽效果');
+                // 检查图片元素是否正确隐藏 - 只有当明确设置了hideImageTag为true时才检查
+                if (this.state.hideImageTag === true) {
+                    const visibleImages = document.querySelectorAll('.item-img:not(.hidden-by-shield), .header-role-img:not(.hidden-by-shield)');
+                    console.log('[标签屏蔽] 仍然可见的图片元素数量:', visibleImages.length);
+                    if (visibleImages.length > 0) {
+                        console.log('[标签屏蔽] 重新应用图片屏蔽');
+                        this.toggleImageTags(true);
+                    }
+                }
+                
+                // 检查其他标签是否正确隐藏
+                if (this.state.hideAuthorTag || this.state.hideUsageTag || this.state.hideScoreTag || this.state.hideOriginTag) {
+                    console.log('[标签屏蔽] 检查非图片标签屏蔽效果');
+                    this.executeNonImageShield();
+                }
+            }, 500);
+            
+            // 添加页面变化监听，处理页面切换问题
+            this.setupPageChangeObserver();
+        }
+        
+        // 设置页面变化监听器，处理页面切换问题
+        setupPageChangeObserver() {
+            console.log('[标签屏蔽] 设置页面变化监听器');
+            
+            // 监听页面内容变化，检测页面切换
+            const pageObserver = new MutationObserver((mutations) => {
+                // 检查是否有新的内容加载（可能是页面切换）
+                const contentChanged = mutations.some(mutation => 
+                    mutation.addedNodes.length > 0 && 
+                    Array.from(mutation.addedNodes).some(node => 
+                        node.nodeType === 1 && 
+                        (node.classList?.contains('item') || node.querySelector?.('.item'))
+                    )
+                );
+                
+                if (contentChanged) {
+                    console.log('[标签屏蔽] 检测到页面内容变化，重新应用屏蔽设置');
+                    // 延迟执行，确保DOM完全加载
+                    setTimeout(() => {
+                        // 只有当相应的状态为true时才执行屏蔽
+                        if (this.state.hideAuthorTag || this.state.hideUsageTag || 
+                            this.state.hideScoreTag || this.state.hideOriginTag) {
+                            console.log('[标签屏蔽] 页面切换后重新应用非图片标签屏蔽');
+                            this.executeNonImageShield();
+                        }
+                        
+                        if (this.state.hideImageTag === true) {
+                            console.log('[标签屏蔽] 页面切换后重新应用图片屏蔽');
+                            this.executeImageShield();
+                        }
+                    }， 300);
+                }
+            });
+            
+            // 监听整个文档的变化
+            pageObserver.observe(document.body， {
+                childList: true,
+                subtree: true
+            });
+            
+            // 监听URL变化（处理页面切换但DOM变化不明显的情况）
+            let lastUrl = location.href;
+            const urlCheckInterval = setInterval(() => {
+                if (location.href !== lastUrl) {
+                    lastUrl = location.href;
+                    console.log('[标签屏蔽] 检测到URL变化，重新应用屏蔽设置');
+                    setTimeout(() => {
+                        // 只有当相应的状态为true时才执行屏蔽
+                        if (this.state.hideAuthorTag || this.state.hideUsageTag || 
+                            this.state.hideScoreTag || this.state.hideOriginTag) {
+                            this.executeNonImageShield();
+                        }
+                        
+                        if (this.state。hideImageTag === true) {
+                            this.executeImageShield();
+                        }
+                    }, 500);
+                }
+            }, 1000);
+            
+            // 保存interval引用，以便在需要时清除
+            this.urlCheckInterval = urlCheckInterval;
+        }
+        
+        // 处理非图片相关的标签屏蔽
+        executeNonImageShield() {
+            console.log('[标签屏蔽] 执行非图片标签屏蔽，状态:', JSON。stringify(this.state));
+            
+            // 检查元素是否存在
+            const authorElements = document.querySelectorAll('.item-author');
+            const usageElements = document.querySelectorAll('.item-usage');
+            const scoreElements = document。querySelectorAll('.item-score');
+            const originElements = document.querySelectorAll('.item-origin-type');
+            
+            console.log('[标签屏蔽] 找到元素数量 - 作者:', authorElements.length, 
+                      '用途:', usageElements.length, 
+                      '评分:', scoreElements.length, 
+                      '来源:', originElements.length);
+            
             this.toggleTag('.item-author', this.state.hideAuthorTag);
             this.toggleTag('.item-usage', this.state.hideUsageTag);
             this.toggleTag('.item-score', this.state.hideScoreTag);
             this.toggleOriginTag(this.state.hideOriginTag); // 新增屏蔽逻辑
-            this.toggleImageTags(this.state.hideImageTag); // 屏蔽图片标签
-            this.injectStyle(); // 注入样式
+        }
+        
+        // 单独处理图片屏蔽
+        executeImageShield() {
+            // 只有当hideImageTag为true时才执行图片屏蔽
+            console.log('[标签屏蔽] 执行图片标签屏蔽，状态:', this.state.hideImageTag);
+            
+            // 检查图片元素是否存在
+            const itemImgElements = document.querySelectorAll('.item-img');
+            const headerRoleImgElements = document.querySelectorAll('.header-role-img');
+            const pageBackgroundImgElements = document.querySelectorAll('.page-background-img');
+            
+            console.log('[标签屏蔽] 找到图片元素数量 - item-img:', itemImgElements.length, 
+                      'header-role-img:', headerRoleImgElements.length, 
+                      'page-background-img:', pageBackgroundImgElements.length);
+            
+            this.toggleImageTags(this.state.hideImageTag);
         }
         // 通用标签显示/隐藏控制
         toggleTag(selector, shouldHide) {
-            document.querySelectorAll(selector).forEach(el => {
+            console.log(`[标签屏蔽] 执行toggleTag，选择器: ${selector}, 隐藏: ${shouldHide}`);
+            const elements = document.querySelectorAll(selector);
+            console.log(`[标签屏蔽] 找到元素数量: ${elements.length}`);
+            
+            elements.forEach((el, index) => {
                 if (shouldHide) {
-                    // 记录原始尺寸和样式
-                    el.dataset.originalWidth = el.style.width || 'auto';
-                    el.dataset.originalHeight = el.style.height || 'auto';
-                    el.dataset.originalVisibility = el.style.visibility || 'visible';
-                    el.dataset.originalOpacity = el.style.opacity || '1';
-                    el.dataset.originalFlex = el.style.flex || '';
-                    el.dataset.originalMargin = el.style.margin || '';
-                    // 保持布局占位
-                    el.style.setProperty('visibility', 'hidden', 'important');
-                    el.style.setProperty('opacity', '0', 'important');
-                    el.style.setProperty('width', `${el.offsetWidth}px`, 'important');
-                    el.style.setProperty('height', `${el.offsetHeight}px`, 'important');
-                    el.style.setProperty('flex', '0 0 auto', 'important');  // 防止flex压缩空间
-                    el.style.setProperty('margin', '0', 'important');         // 消除边距影响
-                } else {
-                    // 增强的恢复逻辑，确保样式完全清除
-                    // 移除所有内联样式
-                    el.style.visibility = '';
-                    el.style.opacity = '';
-                    el.style.width = '';
-                    el.style.height = '';
-                    el.style.flex = '';
-                    el.style.margin = '';
-                    
-                    // 对于图片元素，额外确保重要样式被移除
-                    if (['.item-img', '.header-role-img'].includes(selector)) {
-                        // 强制清除important标记的样式
-                        el.removeAttribute('style');
-                        // 重新应用原始内联样式（如果有）
-                        if (el.dataset.originalWidth !== 'auto' || 
-                            el.dataset.originalHeight !== 'auto' ||
-                            el.dataset.originalVisibility !== 'visible' ||
-                            el.dataset.originalOpacity !== '1' ||
-                            el.dataset.originalFlex ||
-                            el.dataset.originalMargin) {
-                            el.style.visibility = el.dataset.originalVisibility;
-                            el.style.opacity = el.dataset.originalOpacity;
-                            el.style.width = el.dataset.originalWidth;
-                            el.style.height = el.dataset.originalHeight;
-                            el.style.flex = el.dataset.originalFlex;
-                            el.style.margin = el.dataset.originalMargin;
-                        }
+                    // 特殊处理热度（item-score）标签，避免影响作者名字
+                    if (selector === '.item-score') {
+                        console.log(`[标签屏蔽] 特殊处理热度标签 ${selector}[${index}]`);
+                        // 确保只影响热度标签本身，不影响其他元素
+                        el.dataset.originalWidth = el.style.width || 'auto';
+                        el.dataset.originalHeight = el.style.height || 'auto';
+                        el.dataset.originalVisibility = el.style.visibility || 'visible';
+                        el.dataset.originalOpacity = el.style.opacity || '1';
+                        el.dataset.originalDisplay = el.style.display || '';
+                        
+                        // 添加CSS类强制隐藏
+                        el.classList.add('hidden-by-shield');
+                        
+                        // 使用更精确的样式覆盖，避免影响其他元素
+                        el.style.cssText = '';
+                        el.style.setProperty('visibility', 'hidden', 'important');
+                        el.style.setProperty('opacity', '0', 'important');
+                        el.style.setProperty('pointer-events', 'none', 'important');
+                        
+                        // 不设置宽高和边距，避免影响布局
+                        console.log(`[标签屏蔽] 已隐藏热度标签 ${selector}[${index}]`);
                     } else {
-                        // 非图片元素使用setProperty恢复
-                        el.style.setProperty('visibility', el.dataset.originalVisibility, '');
-                        el.style.setProperty('opacity', el.dataset.originalOpacity, '');
-                        el.style.setProperty('width', el.dataset.originalWidth, '');
-                        el.style.setProperty('height', el.dataset.originalHeight, '');
-                        el.style.setProperty('flex', el.dataset.originalFlex, '');
-                        el.style.setProperty('margin', el.dataset.originalMargin, '');
+                        // 记录原始尺寸和样式
+                        el.dataset.originalWidth = el.style.width || 'auto';
+                        el.dataset.originalHeight = el.style.height || 'auto';
+                        el.dataset.originalVisibility = el.style.visibility || 'visible';
+                        el.dataset.originalOpacity = el.style.opacity || '1';
+                        el.dataset.originalFlex = el.style.flex || '';
+                        el.dataset.originalMargin = el.style.margin || '';
+                        el.dataset.originalDisplay = el.style.display || '';
+                        
+                        // 保持布局占位
+                        console.log(`[标签屏蔽] 隐藏元素 ${selector}[${index}]，尺寸:`, el.offsetWidth, 'x', el.offsetHeight);
+                        
+                        // 添加CSS类强制隐藏
+                        el.classList.add('hidden-by-shield');
+                        
+                        // 使用更强的样式覆盖
+                        el.style.cssText = '';
+                        el.style.setProperty('visibility', 'hidden', 'important');
+                        el.style.setProperty('opacity', '0', 'important');
+                        el.style.setProperty('width', `${el.offsetWidth}px`, 'important');
+                        el.style.setProperty('height', `${el.offsetHeight}px`, 'important');
+                        el.style.setProperty('flex', '0 0 auto', 'important');  // 防止flex压缩空间
+                        el.style.setProperty('margin', '0', 'important');         // 消除边距影响
+                        el.style.setProperty('pointer-events', 'none', 'important'); // 禁止交互
+                    }
+                } else {
+                    console.log(`[标签屏蔽] 恢复元素 ${selector}[${index}] 的显示`);
+                    
+                    // 移除CSS类
+                    el.classList.remove('hidden-by-shield');
+                    console.log(`[标签屏蔽] 已移除元素 ${selector}[${index}] 的hidden-by-shield类`);
+                    
+                    // 增强的恢复逻辑，确保样式完全清除
+                    // 强制清除所有内联样式
+                    el.removeAttribute('style');
+                    console.log(`[标签屏蔽] 已清除元素 ${selector}[${index}] 的内联样式`);
+                    
+                    // 确保元素可见性
+                    setTimeout(() => {
+                        // 二次检查，确保元素已恢复可见
+                        if (getComputedStyle(el).visibility === 'hidden' || getComputedStyle(el).opacity === '0') {
+                            console.log(`[标签屏蔽] 元素 ${selector}[${index}] 仍然不可见，强制设置可见性`);
+                            el.style.setProperty('visibility', 'visible', 'important');
+                            el.style.setProperty('opacity', '1', 'important');
+                        }
+                    }, 50);
+                    
+                    // 重新应用原始内联样式（如果有）
+                    if (el.dataset.originalWidth !== 'auto' || 
+                        el.dataset.originalHeight !== 'auto' ||
+                        el.dataset.originalVisibility !== 'visible' ||
+                        el.dataset.originalOpacity !== '1' ||
+                        el.dataset.originalFlex ||
+                        el.dataset.originalMargin ||
+                        el.dataset.originalDisplay) {
+                        el.style.visibility = el.dataset.originalVisibility;
+                        el.style.opacity = el.dataset.originalOpacity;
+                        el.style.width = el.dataset.originalWidth;
+                        el.style.height = el.dataset.originalHeight;
+                        el.style.flex = el.dataset.originalFlex;
+                        el.style.margin = el.dataset.originalMargin;
+                        el.style.display = el.dataset.originalDisplay;
+                        console.log(`[标签屏蔽] 已恢复元素 ${selector}[${index}] 的原始样式`);
                     }
                     
                     // 清除保存的数据，以便下次能重新捕获最新状态
@@ -384,6 +572,7 @@
                     delete el.dataset.originalOpacity;
                     delete el.dataset.originalFlex;
                     delete el.dataset.originalMargin;
+                    delete el.dataset.originalDisplay;
                 }
             });
         }
@@ -414,28 +603,153 @@
             });
         }
         // 屏蔽图片标签
-        toggleImageTags(shouldHide) {
-            // 屏蔽 item-img, header-role-img 标签
+        // 专门处理图片元素的显示和隐藏
+        toggleImageElements(shouldHide) {
+            console.log('[标签屏蔽] 执行toggleImageElements，shouldHide:', shouldHide);
             const imageSelectors = ['.item-img', '.header-role-img'];
             imageSelectors.forEach(selector => {
-                this.toggleTag(selector, shouldHide);
+                const elements = document.querySelectorAll(selector);
+                console.log(`[标签屏蔽] 处理选择器 ${selector}，找到元素数量:`, elements.length);
+                
+                elements.forEach((el, index) => {
+                    if (shouldHide) {
+                        // 记录原始尺寸和样式
+                        el.dataset.originalWidth = el.style.width || 'auto';
+                        el.dataset.originalHeight = el.style.height || 'auto';
+                        el.dataset.originalVisibility = el.style.visibility || 'visible';
+                        el.dataset.originalOpacity = el.style.opacity || '1';
+                        el.dataset.originalFlex = el.style.flex || '';
+                        el.dataset.originalMargin = el.style.margin || '';
+                        
+                        // 保持布局占位
+                        console.log(`[标签屏蔽] 隐藏元素 ${selector}[${index}]，尺寸:`, el.offsetWidth, 'x', el.offsetHeight);
+                        
+                        // 添加CSS类强制隐藏
+                        el.classList.add('hidden-by-shield');
+                        
+                        // 使用更强的样式覆盖
+                        el.style.cssText = '';
+                        el.style.setProperty('visibility', 'hidden', 'important');
+                        el.style.setProperty('opacity', '0', 'important');
+                        el.style.setProperty('width', `${el.offsetWidth}px`, 'important');
+                        el.style.setProperty('height', `${el.offsetHeight}px`, 'important');
+                        el.style.setProperty('flex', '0 0 auto', 'important');  // 防止flex压缩空间
+                        el.style.setProperty('margin', '0', 'important');         // 消除边距影响
+                        
+                        // 添加额外的样式以确保隐藏
+                        el.style.setProperty('display', 'block', 'important');
+                        el.style.setProperty('position', 'relative', 'important');
+                        
+                        // 添加一个覆盖层
+                        if (!el.querySelector('.image-shield-overlay')) {
+                            const overlay = document.createElement('div');
+                            overlay.className = 'image-shield-overlay';
+                            overlay.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f5f5f5; z-index: 9999;';
+                            el.appendChild(overlay);
+                            console.log(`[标签屏蔽] 为元素 ${selector}[${index}] 添加了覆盖层`);
+                        }
+                    } else {
+                        console.log(`[标签屏蔽] 恢复元素 ${selector}[${index}] 的显示`);
+                        
+                        // 移除CSS类
+                        el.classList.remove('hidden-by-shield');
+                        console.log(`[标签屏蔽] 已移除元素 ${selector}[${index}] 的hidden-by-shield类`);
+                        
+                        // 移除覆盖层
+                        const overlay = el.querySelector('.image-shield-overlay');
+                        if (overlay) {
+                            el.removeChild(overlay);
+                            console.log(`[标签屏蔽] 已移除元素 ${selector}[${index}] 的覆盖层`);
+                        }
+                        
+                        // 增强的恢复逻辑，确保样式完全清除
+                        // 强制清除important标记的样式
+                        el.removeAttribute('style');
+                        console.log(`[标签屏蔽] 已清除元素 ${selector}[${index}] 的内联样式`);
+                        
+                        // 重新应用原始内联样式（如果有）
+                        if (el.dataset.originalWidth !== 'auto' || 
+                            el.dataset.originalHeight !== 'auto' ||
+                            el.dataset.originalVisibility !== 'visible' ||
+                            el.dataset.originalOpacity !== '1' ||
+                            el.dataset.originalFlex ||
+                            el.dataset.originalMargin) {
+                            el.style.visibility = el.dataset.originalVisibility;
+                            el.style.opacity = el.dataset.originalOpacity;
+                            el.style.width = el.dataset.originalWidth;
+                            el.style.height = el.dataset.originalHeight;
+                            el.style.flex = el.dataset.originalFlex;
+                            el.style.margin = el.dataset.originalMargin;
+                            console.log(`[标签屏蔽] 已恢复元素 ${selector}[${index}] 的原始样式`);
+                        }
+                        
+                        // 清除保存的数据，以便下次能重新捕获最新状态
+                        delete el.dataset.originalWidth;
+                        delete el.dataset.originalHeight;
+                        delete el.dataset.originalVisibility;
+                        delete el.dataset.originalOpacity;
+                        delete el.dataset.originalFlex;
+                        delete el.dataset.originalMargin;
+                    }
+                });
             });
+        }
+        
+        toggleImageTags(shouldHide) {
+            console.log('[标签屏蔽] 执行toggleImageTags，shouldHide:', shouldHide);
+            
+            // 屏蔽 item-img, header-role-img 标签
+            // 使用专用方法处理图片元素，而不是通用的toggleTag方法
+            this.toggleImageElements(shouldHide);
             
             // 屏蔽 page-background-img 中的背景图片
-            document.querySelectorAll('.page-background-img').forEach(box => {
+            const backgroundElements = document.querySelectorAll('.page-background-img');
+            console.log('[标签屏蔽] 处理背景图片元素，找到数量:', backgroundElements.length);
+            
+            backgroundElements.forEach((box, index) => {
                 if (shouldHide) {
                     // 保存原始背景样式
                     if (!box.dataset.originalBackground) {
                         // 只有在未保存过的情况下才保存，避免覆盖之前保存的值
                         box.dataset.originalBackground = box.style.background || '';
                         box.dataset.originalBackgroundImage = getComputedStyle(box).backgroundImage;
+                        console.log(`[标签屏蔽] 保存背景图片[${index}]原始样式:`, box.dataset.originalBackgroundImage);
                     }
-                    // 移除背景图片
-                    box.style.setProperty('background-image', 'none', 'important');
+                    // 添加CSS类强制隐藏
+                    box.classList.add('hidden-by-shield');
+                    console.log(`[标签屏蔽] 已为背景图片[${index}]添加hidden-by-shield类`);
+                    
+                    // 移除背景图片，使用更强的样式覆盖
+                    box.style.cssText = box.style.cssText + '; background-image: none !important; background: none !important;';
+                    console.log(`[标签屏蔽] 已设置背景图片[${index}]为none`);
+                    
+                    // 添加一个覆盖层
+                    if (!box.querySelector('.bg-shield-overlay')) {
+                        const overlay = document.createElement('div');
+                        overlay.className = 'bg-shield-overlay';
+                        overlay.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #f5f5f5; z-index: 9999;';
+                        box.appendChild(overlay);
+                        console.log(`[标签屏蔽] 为背景图片[${index}]添加了覆盖层`);
+                    }
                 } else {
+                    console.log(`[标签屏蔽] 恢复背景图片[${index}]`);
+                    
+                    // 移除CSS类
+                    box.classList.remove('hidden-by-shield');
+                    console.log(`[标签屏蔽] 已移除背景图片[${index}]的hidden-by-shield类`);
+                    
+                    // 移除覆盖层
+                    const overlay = box.querySelector('.bg-shield-overlay');
+                    if (overlay) {
+                        box.removeChild(overlay);
+                        console.log(`[标签屏蔽] 已移除背景图片[${index}]的覆盖层`);
+                    }
+                    
                     // 增强的背景图片恢复逻辑
                     // 先清除所有可能的重要样式
                     box.style.removeProperty('background-image');
+                    box.style.removeProperty('background');
+                    console.log(`[标签屏蔽] 已移除背景图片[${index}]的background相关属性`);
                     
                     // 如果没有保存的样式数据，直接清除内联样式，让浏览器使用默认样式
                     if (!box.dataset.originalBackground && !box.dataset.originalBackgroundImage) {
@@ -506,12 +820,37 @@
         
         // 新增样式注入
         injectStyle() {
+            console.log('[标签屏蔽] 注入样式');
             GM_addStyle(`
             /* 为被隐藏元素添加占位保护 */
             .item-usage[style*="hidden"],
             .item-author[style*="hidden"],
             .item-score[style*="hidden"],
             .item-img[style*="hidden"],
+            
+            /* 强制隐藏图片元素 */
+            .item-img.hidden-by-shield,
+            .header-role-img.hidden-by-shield,
+            .page-background-img.hidden-by-shield {
+                visibility: hidden !important;
+                opacity: 0 !important;
+                background-image: none !important;
+                background: none !important;
+                position: relative !important;
+            }
+            
+            /* 覆盖层样式 */
+            .image-shield-overlay,
+            .bg-shield-overlay {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background-color: #f5f5f5 !important;
+                z-index: 9999 !important;
+            }
+            
             .header-role-img[style*="hidden"] {
                 pointer-events: none !important;
                 user-select: none !important;
@@ -607,27 +946,32 @@
             container.querySelector('#toggle-author-tag').addEventListener('change', (e) => {
                 this.state.hideAuthorTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.authorTag, e.target.checked);
-                this.execute();
+                // 只执行非图片相关的标签屏蔽，不影响图片显示
+                this.executeNonImageShield();
             });
             container.querySelector('#toggle-usage-tag').addEventListener('change', (e) => {
                 this.state.hideUsageTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.usageTag, e.target.checked);
-                this.execute();
+                // 只执行非图片相关的标签屏蔽，不影响图片显示
+                this.executeNonImageShield();
             });
             container.querySelector('#toggle-origin-tag').addEventListener('change', (e) => {
                 this.state.hideOriginTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.originTag, e.target.checked);
-                this.execute();
+                // 只执行非图片相关的标签屏蔽，不影响图片显示
+                this.executeNonImageShield();
             });
             container.querySelector('#toggle-score-tag').addEventListener('change', (e) => {
                 this.state.hideScoreTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.scoreTag, e.target.checked);
-                this.execute();
+                // 只执行非图片相关的标签屏蔽，不影响图片显示
+                this.executeNonImageShield();
             });
             container.querySelector('#toggle-image-tag').addEventListener('change', (e) => {
                 this.state.hideImageTag = e.target.checked;
                 GM_setValue(this.STORAGE_KEYS.imageTag, e.target.checked);
-                this.execute();
+                // 只执行图片屏蔽相关的方法，不影响其他标签屏蔽
+                this.executeImageShield();
             });
             // 插入到标题下方，基础屏蔽容器的上方
             // 先查找版本信息和滚动容器
@@ -907,7 +1251,7 @@
                     // 尝试获取CSS属性分析器（优先从window获取，然后尝试unsafeWindow）
                     const cssAnalyzer = window.cssPropertyAnalyzer || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.cssPropertyAnalyzer : null);
                     
-                    if (cssAnalyzer && typeof cssAnalyzer.initialize === 'function') {
+                    if (cssAnalyzer && typeof cssAnalyzer。initialize === 'function') {
                         try {
                             // 启动CSS属性分析器
                             cssAnalyzer.initialize();
@@ -2128,15 +2472,15 @@
         }
         // 处理移除关键词
         handleRemove(key, word) {
-            this.manager[key].data.delete(word);
+            this。manager[key]。data.delete(word);
             this.saveData(key);
             const list = this.panel.querySelector(`[data-key="${key}"] .shield-list`);
             this.refreshList(key, list);
             // 强制刷新所有相关元素
             this.executeShielding(true);
             // 显式恢复所有布局的项目
-            document.querySelectorAll('.item-list, .item').forEach(el => {
-                const target = el.querySelector(CONFIG.CATEGORIES[key].selector)?.textContent.trim();
+            document。querySelectorAll('.item-list, .item')。forEach(el => {
+                const target = el.querySelector(CONFIG。CATEGORIES[key].selector)?.textContent.trim();
                 if (target === word) {
                     el.style.display = '';
                 }
@@ -2157,21 +2501,21 @@
             if (!modeToggle) {
                 // 创建一个新的开关
                 modeToggle = document.createElement('div');
-                modeToggle.id = 'css-analyzer-mode-toggle';
+                modeToggle。id = 'css-analyzer-mode-toggle';
                 modeToggle.className = 'toggle-switch';
-                modeToggle.style.cssText = `
+                modeToggle.style。cssText = `
                     display: inline-block;
                     margin-left: 10px;
                     vertical-align: middle;
                     background: transparent;
                 `;
 
-                const toggleInput = document.createElement('input');
+                const toggleInput = document。createElement('input');
                 toggleInput.id = 'css-analyzer-dark-mode';
                 toggleInput.type = 'checkbox';
-                toggleInput.style.display = 'none';
+                toggleInput。style。display = 'none';
 
-                const toggleLabel = document.createElement('label');
+                const toggleLabel = document。createElement('label');
                 toggleLabel.htmlFor = 'css-analyzer-dark-mode';
                 toggleLabel.style.cssText = `
                     display: inline-block;
@@ -2187,8 +2531,8 @@
                 `;
 
                 const toggleSlider = document.createElement('div');
-                toggleSlider.className = 'toggle-slider';
-                toggleSlider.style.cssText = `
+                toggleSlider。className = 'toggle-slider';
+                toggleSlider。style.cssText = `
                     position: absolute;
                     top: 3px;
                     left: 3px;
@@ -2220,12 +2564,12 @@
                     color: #6c757d;
                     font-size: 12px;
                 `;
-                toggleMoon.textContent = '🌙';
+                toggleMoon。textContent = '🌙';
 
-                toggleLabel.appendChild(toggleSlider);
+                toggleLabel。appendChild(toggleSlider);
                 toggleLabel.appendChild(toggleSun);
                 toggleLabel.appendChild(toggleMoon);
-                modeToggle.appendChild(toggleInput);
+                modeToggle。appendChild(toggleInput);
                 modeToggle.appendChild(toggleLabel);
             }
 
@@ -2403,13 +2747,8 @@
                 border-radius: 4px;
                 cursor: pointer;">
                 导出配置
-            <input type="file"
-               accept=".json"
-               style="display: none;">
             </span>
             `;
-            // 获取导出按钮内的 input 元素
-            const exportFileInput = exportButton.querySelector('input');
             // 点击导出按钮触发导出配置方法
             exportButton.addEventListener('click', () => this.exportConfig());
             // 导入按钮
@@ -2501,23 +2840,164 @@
     /* =========================== 初始化系统 =========================== */
     let initialized = false;
     let updateTimer = null;
+    let tagShield = null; // 全局保存TagShield实例，方便后续调用
+    
     function init() {
-        if (initialized || document.readyState !== 'complete') return;
+        // 如果已经初始化或者文档尚未完全加载，则返回
+        if (initialized) return;
+        if (document.readyState !== 'complete' && document.readyState !== 'interactive') return;
 
-        if (updateTimer) clearInterval(updateTimer); // 清理旧定时器
+        console.log('[标签屏蔽] 初始化系统...');
+        
+        // 清理旧定时器并设置新的更新检查定时器
+        if (updateTimer) clearInterval(updateTimer);
         updateTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+        
+        // 初始化屏蔽系统
         new ShieldSystem().executeShielding();
         
-        // 创建TagShield实例并注入UI，但不自动执行屏蔽
-        const tagShield = new TagShield(false);
+        // 创建TagShield实例并注入UI，同时执行屏蔽
+        // 如果已经存在tagShield实例，则重用它
+        if (!tagShield) {
+            console.log('[标签屏蔽] 创建新的TagShield实例');
+            tagShield = new TagShield(true); // 设置为true，自动执行initializeShield
+        } else {
+            console.log('[标签屏蔽] 重用现有TagShield实例并重新应用屏蔽设置');
+            tagShield.initializeShield();
+        }
+        
+        // 确保UI被注入
         tagShield.tryInjectUI();
         
+        // 监听页面内容变化，重新应用屏蔽设置
+        setupContentObserver();
+        
+        // 监听URL变化，在页面切换时重新应用屏蔽设置
+        setupRouteChangeListener();
+        
+        // 标记为已初始化
         initialized = true;
+        console.log('[标签屏蔽] 系统初始化完成');
     }
+    
+    // 监听页面内容变化
+    function setupContentObserver() {
+        // 使用MutationObserver监听DOM变化
+        const contentObserver = new MutationObserver((mutations) => {
+            // 检查是否有新的内容被添加
+            const hasNewContent = mutations.some(mutation => 
+                mutation.type === 'childList' && mutation.addedNodes.length > 0);
+            
+            if (hasNewContent && tagShield) {
+                // 延迟执行，等待新内容完全渲染
+                setTimeout(() => {
+                    console.log('[标签屏蔽] 检测到内容变化，重新应用屏蔽设置');
+                    tagShield.initializeShield();
+                }, 300);
+            }
+        });
+        
+        // 监听主要内容区域的变化
+        const contentArea = document.querySelector('.main-content') || 
+                           document.querySelector('.content-container') || 
+                           document.body;
+        
+        if (contentArea) {
+            contentObserver.observe(contentArea, {
+                childList: true,
+                subtree: true
+            });
+            console.log('[标签屏蔽] 已设置内容变化监听器');
+        }
+    }
+    
+    // 监听URL变化
+    function setupRouteChangeListener() {
+        // 保存当前URL，用于检测变化
+        let currentUrl = window.location.href;
+        
+        // 定期检查URL是否变化（更频繁地检查）
+        const urlCheckInterval = setInterval(() => {
+            if (currentUrl !== window.location.href) {
+                currentUrl = window.location.href;
+                console.log('[标签屏蔽] 检测到页面切换，重新应用屏蔽设置');
+                
+                // 页面切换后，多次尝试应用屏蔽，确保在不同加载阶段都能正确应用
+                // 立即尝试一次
+                if (tagShield) {
+                    tagShield.initializeShield();
+                }
+                
+                // 短暂延迟后再次尝试
+                setTimeout(() => {
+                    if (tagShield) {
+                        tagShield.initializeShield();
+                    }
+                }, 300);
+                
+                // 较长延迟后再次尝试，确保在页面完全加载后应用
+                setTimeout(() => {
+                    if (tagShield) {
+                        tagShield.initializeShield();
+                    }
+                }, 1000);
+            }
+        }, 200); // 更频繁地检查URL变化
+        
+        // 监听popstate事件（浏览器前进/后退按钮）
+        window.addEventListener('popstate', () => {
+            console.log('[标签屏蔽] 检测到popstate事件，重新应用屏蔽设置');
+            // 多次尝试应用屏蔽
+            if (tagShield) {
+                tagShield.initializeShield();
+            }
+            setTimeout(() => {
+                if (tagShield) {
+                    tagShield.initializeShield();
+                }
+            }， 500);
+        });
+        
+        // 监听hashchange事件（URL hash变化）
+        window.addEventListener('hashchange'， () => {
+            console.log('[标签屏蔽] 检测到hashchange事件，重新应用屏蔽设置');
+            // 多次尝试应用屏蔽
+            if (tagShield) {
+                tagShield。initializeShield();
+            }
+            setTimeout(() => {
+                if (tagShield) {
+                    tagShield。initializeShield();
+                }
+            }， 500);
+        });
+        
+        console.log('[标签屏蔽] 已设置路由变化监听器');
+    }
+    
+    // 增强的页面加载事件监听
     // 监听页面加载完成事件
-    window.addEventListener('load', init);
+    window。addEventListener('load'， () => {
+        console。log('[标签屏蔽] 页面加载完成，初始化系统');
+        init();
+        // 额外延迟执行一次，确保在复杂页面上也能正确应用
+        setTimeout(init， 500);
+    });
+    
     // 监听 DOM 内容加载完成事件
-    document.addEventListener('DOMContentLoaded', init);
-    // 延迟 2 秒后尝试初始化
+    document。addEventListener('DOMContentLoaded'， () => {
+        console。log('[标签屏蔽] DOM内容加载完成，初始化系统');
+        init();
+    });
+    
+    // 多次尝试初始化，确保在各种情况下都能正确应用
+    setTimeout(init， 1000);
     setTimeout(init, 2000);
+    setTimeout(init， 3000);
+    
+    // 如果文档已经加载完成，立即初始化
+    if (document。readyState === 'complete' || document.readyState === 'interactive') {
+        console。log('[标签屏蔽] 文档已加载，立即初始化系统');
+        init();
+    }
 })();
