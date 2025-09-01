@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CSS属性分析器
 // @namespace    https://github.com/Suziyan-528/SZY-DZMM
-// @version      2.0.0
-// @description  分析页面中的CSS属性，转换为中文解释，并提供可视化编辑界面（优化版：默认只分析特定容器）
+// @version      2.1.0
+// @description  分析页面中的CSS属性，转换为中文解释，并提供可视化编辑界面
 // @author       苏子言
 // @match        *://*.meimoai10.com/*
 // @match        *://*.sexyai.top/*
@@ -48,10 +48,10 @@
         'border-top': '上边框',
         'border-right': '右边框',
         'border-bottom': '下边框',
-        'border-left': '左边框',
+        'border-left': '左边框'，
         'border-radius': '边框圆角',
         'border-top-left-radius': '左上圆角',
-        'border-top-right-radius': '右上圆角',
+        'border-top-right-radius': '右上圆角'，
         'border-bottom-right-radius': '右下圆角',
         'border-bottom-left-radius': '左下圆角',
         
@@ -70,7 +70,7 @@
         // 尺寸相关
         'width': '宽度',
         'height': '高度',
-        'min-width': '最小宽度',
+        'min-width': '最小宽度'，
         'max-width': '最大宽度',
         'min-height': '最小高度',
         'max-height': '最大高度',
@@ -343,16 +343,33 @@
                 
                 // 仅获取常用的CSS属性以提高性能
                 const commonProperties = [
-                    'background', 'background-color', 'color', 'font-size', 'font-family', 'font-weight',
-                    'width', 'height', 'margin', 'padding', 'border', 'border-radius',
-                    'position', 'top', 'right', 'bottom', 'left', 'display', 'opacity',
-                    'text-align', 'line-height', 'box-shadow', 'text-shadow', 'transform'
+                    // 背景相关
+                    'background', 'background-color', 'background-image', 'background-repeat', 'background-position', 'background-size',
+                    // 文本相关
+                    'color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-align', 'text-decoration',
+                    'text-transform', 'text-indent', 'line-height', 'letter-spacing', 'word-spacing',
+                    // 盒模型相关
+                    'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height',
+                    'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+                    'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+                    // 边框相关
+                    'border', 'border-width', 'border-style', 'border-color', 'border-radius',
+                    'border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius',
+                    // 定位相关
+                    'position', 'top', 'right', 'bottom', 'left', 'z-index', 'display', 'float', 'clear', 'visibility',
+                    // 溢出相关
+                    'overflow', 'overflow-x', 'overflow-y',
+                    // 视觉效果
+                    'opacity', 'box-shadow', 'text-shadow', 'transform', 'transition', 'animation',
+                    // 交互相关
+                    'cursor'
                 ];
                 
+                // 遍历常用CSS属性，只收集有值的属性
                 for (let i = 0; i < commonProperties.length; i++) {
                     const propName = commonProperties[i];
                     const propValue = computedStyle.getPropertyValue(propName);
-                    if (propValue && propValue.trim() !== '') {
+                    if (propValue && propValue.trim() !== '' && propValue !== 'auto' && propValue !== 'none' && propValue !== 'normal') {
                         const chineseName = cssPropertyMap[propName] || propName;
                         const parsedValue = parseCSSValue(propName, propValue);
                         
@@ -1290,10 +1307,103 @@
             font-size: 14px;
         `;
         
+        // 创建恢复蒙版按钮
+        const restoreMaskBtn = document.createElement('button');
+        restoreMaskBtn.textContent = '恢复蒙版';
+        restoreMaskBtn.style.cssText = `
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            display: none; /* 默认隐藏 */
+        `;
+        
+        // 检查是否存在蒙版信息
+        function checkForMasks() {
+            const masks = localStorage.getItem('css-analyzer-masks');
+            if (masks) {
+                try {
+                    const masksData = JSON.parse(masks);
+                    if (masksData && Object.keys(masksData).length > 0) {
+                        restoreMaskBtn.style.display = 'block';
+                    } else {
+                        restoreMaskBtn.style.display = 'none';
+                    }
+                } catch (e) {
+                    restoreMaskBtn.style.display = 'none';
+                }
+            } else {
+                restoreMaskBtn.style.display = 'none';
+            }
+        }
+        
+        // 立即检查一次
+        checkForMasks();
+        
+        // 恢复蒙版按钮点击事件
+        restoreMaskBtn.addEventListener('click', () => {
+            const confirmRestore = confirm('确定要恢复所有蒙版吗？这将恢复元素的原始class和style属性。');
+            if (confirmRestore) {
+                try {
+                    const masks = JSON.parse(localStorage.getItem('css-analyzer-masks') || '{}');
+                    
+                    // 获取或创建样式表
+                    let styleSheet = document.getElementById('css-analyzer-stylesheet');
+                    if (!styleSheet) {
+                        styleSheet = document.createElement('style');
+                        styleSheet.id = 'css-analyzer-stylesheet';
+                        document.head.appendChild(styleSheet);
+                    }
+                    
+                    // 移除所有蒙版样式规则
+                    while (styleSheet.sheet && styleSheet.sheet.cssRules.length > 0) {
+                        styleSheet.sheet.deleteRule(0);
+                    }
+                    
+                    // 恢复每个元素的原始class和style
+                        Object.entries(masks).forEach(([uniqueClass, originalInfo]) => {
+                            const elements = document.querySelectorAll('.' + uniqueClass);
+                            elements.forEach(element => {
+                                // 移除蒙版class但保留其他class
+                                element.classList.remove(uniqueClass);
+                                
+                                // 恢复原始style
+                                if (originalInfo.style) {
+                                    element.setAttribute('style', originalInfo.style);
+                                } else {
+                                    element.removeAttribute('style');
+                                }
+                            });
+                        });
+                    
+                    // 清除存储的蒙版信息
+                    localStorage.removeItem('css-analyzer-masks');
+                    
+                    showNotification('所有蒙版已恢复');
+                    
+                    // 隐藏恢复按钮
+                    restoreMaskBtn.style.display = 'none';
+                    
+                    // 重新分析CSS以更新界面
+                    setTimeout(() => {
+                        const newRules = findContentLeftCSS();
+                        createUI(newRules);
+                    }, 100);
+                } catch (e) {
+                    console.log('恢复蒙版失败:', e);
+                    showNotification('恢复蒙版失败，请查看控制台日志');
+                }
+            }
+        });
+        
         searchContainer.appendChild(searchLabel);
         searchContainer.appendChild(searchInput);
         searchContainer.appendChild(searchBtn);
         searchContainer.appendChild(resetBtn);
+        searchContainer.appendChild(restoreMaskBtn);
         panel.appendChild(searchContainer);
 
         // 创建规则容器
@@ -1406,6 +1516,307 @@
                     highlightElement(rule.selector);
                 });
                 
+                // 蒙版按钮
+                const maskBtn = document.createElement('button');
+                maskBtn.textContent = '蒙版';
+                
+                // 检测元素是否有内联style属性
+                let hasInlineStyle = false;
+                try {
+                    const elements = document.querySelectorAll(rule.selector);
+                    if (elements.length > 0) {
+                        for (let i = 0; i < elements.length; i++) {
+                            if (elements[i].hasAttribute('style')) {
+                                hasInlineStyle = true;
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log('检测内联style属性失败:'， e);
+                }
+                
+                // 根据是否有内联style设置按钮颜色
+                maskBtn.style.cssText = `
+                    background: ${hasInlineStyle ? '#6610f2' : '#adb5bd'};
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    cursor: ${hasInlineStyle ? 'pointer' : 'not-allowed'};
+                    font-size: 10px;
+                `;
+                
+                // 创建提示弹窗函数
+                function createMaskConfirmDialog() {
+                    // 检查是否已存在弹窗
+                    let existingDialog = document.getElementById('css-analyzer-mask-dialog');
+                    if (existingDialog) {
+                        existingDialog.remove();
+                    }
+                    
+                    // 创建弹窗容器
+                    const dialog = document。createElement('div');
+                    dialog。id = 'css-analyzer-mask-dialog';
+                    dialog.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        z-index: 9999;
+                        width: 90%;
+                        max-width: 400px;
+                    `;
+                    
+                    // 标题
+                    const title = document。createElement('h3');
+                    title.textContent = '创建样式蒙版';
+                    title.style.cssText = `
+                        margin-top: 0;
+                        color: #333;
+                        font-size: 16px;
+                    `;
+                    dialog.appendChild(title);
+                    
+                    // 内容
+                    const content = document.createElement('p');
+                    content.textContent = '此操作会将元素的内联style转换为唯一class，并暂时"隔绝"原始样式，以避免全局污染。确定要继续吗？';
+                    content.style.cssText = `
+                        color: #666;
+                        line-height: 1.5;
+                    `;
+                    dialog.appendChild(content);
+                    
+                    // 按钮容器
+                    const buttonsContainer = document.createElement('div');
+                    buttonsContainer.style.cssText = `
+                        display: flex;
+                        gap: 10px;
+                        justify-content: flex-end;
+                        margin-top: 15px;
+                    `;
+                    dialog.appendChild(buttonsContainer);
+                    
+                    // 取消按钮
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.textContent = '取消';
+                    cancelBtn.style.cssText = `
+                        background: #6c757d;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 8px 16px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    `;
+                    cancelBtn。addEventListener('click', () => {
+                        dialog.remove();
+                    });
+                    buttonsContainer。appendChild(cancelBtn);
+                    
+                    // 确定按钮
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.textContent = '确定';
+                    confirmBtn.style.cssText = `
+                        background: #6610f2;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 8px 16px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    `;
+                    confirmBtn.addEventListener('click', () => {
+                        // 执行蒙版创建操作
+                        createStyleMask(rule。selector);
+                        dialog。remove();
+                    });
+                    buttonsContainer.appendChild(confirmBtn);
+                    
+                    // 添加到文档
+                    document.body.appendChild(dialog);
+                }
+                
+                // 创建样式蒙版函数
+                function createStyleMask(selector) {
+                    try {
+                        // 首先找到content left容器
+                        const contentLeftContainers = [];
+                        
+                        // 使用精确路径查找策略找到content left容器
+                        try {
+                            // 先找到id="app"的元素
+                            const appElement = document.getElementById('app');
+                            if (appElement) {
+                                // 查找app下的class="chat"元素
+                                const chatElements = [];
+                                let currentLevel = [appElement];
+                                
+                                // 向下遍历4层
+                                for (let i = 0; i < 4 && currentLevel.length > 0; i++) {
+                                    const nextLevel = [];
+                                    currentLevel.forEach(el => {
+                                        if (el.children) {
+                                            nextLevel.push(...Array.from(el.children));
+                                        }
+                                    });
+                                    currentLevel = nextLevel;
+                                }
+                                
+                                // 找到class="chat"的元素
+                                currentLevel.forEach(el => {
+                                    if (el.classList && el.classList.contains('chat')) {
+                                        chatElements.push(el);
+                                    }
+                                });
+                                
+                                // 从chat元素开始，再过6层找到class="chat-scope-box"元素
+                                const chatScopeBoxElements = [];
+                                chatElements.forEach(chatEl => {
+                                    let chatLevel = [chatEl];
+                                    for (let i = 0; i < 6 && chatLevel.length > 0; i++) {
+                                        const nextLevel = [];
+                                        chatLevel.forEach(el => {
+                                            if (el.children) {
+                                                nextLevel.push(...Array.from(el.children));
+                                            }
+                                        });
+                                        chatLevel = nextLevel;
+                                    }
+                                    chatLevel.forEach(el => {
+                                        if (el.classList && el.classList.contains('chat-scope-box')) {
+                                            chatScopeBoxElements.push(el);
+                                        }
+                                    });
+                                });
+                                
+                                // 找到class="item Ai"但不包含"avatar-body"的元素
+                                const itemAiElements = [];
+                                chatScopeBoxElements.forEach(boxEl => {
+                                    const items = boxEl.querySelectorAll('.item.Ai:not(.avatar-body)');
+                                    itemAiElements.push(...Array.from(items));
+                                });
+                                
+                                // 找到class="touch-scope"的元素
+                                const touchScopeElements = [];
+                                itemAiElements.forEach(itemEl => {
+                                    const scopes = itemEl.querySelectorAll('.touch-scope');
+                                    touchScopeElements.push(...Array.from(scopes));
+                                });
+                                
+                                // 最后查找class="content left"元素
+                                touchScopeElements.forEach(scopeEl => {
+                                    const contents = scopeEl.querySelectorAll('.content.left');
+                                    contentLeftContainers.push(...Array.from(contents));
+                                });
+                            }
+                        } catch (e) {
+                            console.error('CSS属性分析器: 精确路径查找content left容器出错:', e);
+                        }
+                        
+                        // 如果精确路径查找失败，使用备用策略
+                        if (contentLeftContainers.length === 0) {
+                            console.log('CSS属性分析器: 使用备用策略查找content left容器');
+                            const containers = document.querySelectorAll('.content.left');
+                            contentLeftContainers.push(...Array.from(containers));
+                        }
+                        
+                        // 如果还是没找到，就直接在document中查找
+                        let elements = [];
+                        if (contentLeftContainers.length > 0) {
+                            // 只在content left容器内查找匹配选择器的元素
+                            contentLeftContainers.forEach(container => {
+                                const matchedElements = container.querySelectorAll(selector);
+                                elements.push(...Array.from(matchedElements));
+                            });
+                        } else {
+                            // 如果找不到content left容器，才在整个文档中查找
+                            elements = Array.from(document.querySelectorAll(selector));
+                        }
+                        
+                        if (elements.length === 0) {
+                            showNotification('未找到匹配的元素');
+                            return;
+                        }
+                        
+                        elements.forEach((element, index) => {
+                            // 检查元素是否有内联style
+                            if (element.hasAttribute('style')) {
+                                // 创建唯一class
+                                const uniqueClass = `css-mask-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`;
+                                
+                                // 保存原始的class和style信息
+                                const originalInfo = {
+                                    className: element.className,
+                                    style: element.getAttribute('style')
+                                };
+                                
+                                // 存储原始信息
+                                const masksStorage = JSON.parse(localStorage.getItem('css-analyzer-masks') || '{}');
+                                masksStorage[uniqueClass] = originalInfo;
+                                localStorage.setItem('css-analyzer-masks', JSON.stringify(masksStorage));
+                                
+                                // 获取内联style的所有属性和值
+                                const inlineStyles = element.getAttribute('style');
+                                const styleMap = {};
+                                
+                                // 使用正则表达式正确解析内联样式，避免URL等特殊值被错误分割
+                                const styleRegex = /([a-z-]+):\s*([^;]+)(?:;|$)/gi;
+                                let match;
+                                while ((match = styleRegex.exec(inlineStyles)) !== null) {
+                                    const key = match[1].trim();
+                                    const value = match[2].trim();
+                                    if (key && value) {
+                                        styleMap[key] = value;
+                                    }
+                                }
+                                
+                                // 移除内联style但保留原始class
+                                element.removeAttribute('style');
+                                
+                                // 添加唯一class（不清除原始class）
+                                element.classList.add(uniqueClass);
+                                
+                                // 将内联style转换为页面样式表中的规则
+                                let styleSheet = document.getElementById('css-analyzer-styles');
+                                if (!styleSheet) {
+                                    styleSheet = document.createElement('style');
+                                    styleSheet.id = 'css-analyzer-styles';
+                                    document.head.appendChild(styleSheet);
+                                }
+                                
+                                // 构建CSS规则文本
+                                let cssText = `.${uniqueClass} {`;
+                                Object.keys(styleMap).forEach(key => {
+                                    cssText += ` ${key}: ${styleMap[key]} !important;`;
+                                });
+                                cssText += ' }';
+                                
+                                // 插入规则
+                                styleSheet.sheet.insertRule(cssText, styleSheet.sheet.cssRules.length);
+                            }
+                        });
+                        
+                        showNotification('样式蒙版创建成功！');
+                        // 重新分析CSS以更新界面
+                        setTimeout(() => {
+                            showCSSAnalyzerPanel();
+                        }, 100);
+                    } catch (e) {
+                        console.log('创建样式蒙版失败:', e);
+                        showNotification('创建样式蒙版失败，请查看控制台日志');
+                    }
+                }
+                
+                // 只有当元素有内联style时才添加点击事件
+                if (hasInlineStyle) {
+                    maskBtn.addEventListener('click', createMaskConfirmDialog);
+                }
+                
                 // 重置按钮
                 const resetBtn = document.createElement('button');
                 resetBtn.textContent = '重置';
@@ -1428,9 +1839,103 @@
                     location.reload();
                 });
                 
+                // 恢复蒙版按钮
+                const restoreMaskBtn = document。createElement('button');
+                restoreMaskBtn.textContent = '恢复蒙版';
+                restoreMaskBtn.style.cssText = `
+                    background: #17a2b8;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    font-size: 10px;
+                    margin-left: 4px;
+                    display: none;
+                `;
+                
+                // 检查是否有蒙版需要恢复
+                function checkForMasks() {
+                    const masksStorage = JSON.parse(localStorage.getItem('css-analyzer-masks') || '{}');
+                    const hasMasks = Object.keys(masksStorage)。length > 0;
+                    
+                    if (hasMasks) {
+                        restoreMaskBtn.style.display = 'inline-block';
+                    }
+                }
+                
+                // 立即检查一次
+                checkForMasks();
+                
+                // 恢复蒙版功能
+                restoreMaskBtn。addEventListener('click', () => {
+                    try {
+                        const masksStorage = JSON.parse(localStorage.getItem('css-analyzer-masks') || '{}');
+                        const maskClasses = Object.keys(masksStorage);
+                        
+                        if (maskClasses。length === 0) {
+                            showNotification('没有可恢复的蒙版');
+                            return;
+                        }
+                        
+                        // 确认对话框
+                        if (confirm('确定要恢复所有通过蒙版功能修改的元素吗？这将恢复它们的原始class和内联style。')) {
+                            // 移除添加的样式规则
+                            const styleSheet = document.getElementById('css-analyzer-styles');
+                            if (styleSheet && styleSheet.sheet) {
+                                const rules = styleSheet.sheet.cssRules;
+                                for (let i = rules.length - 1; i >= 0; i--) {
+                                    const ruleText = rules[i].cssText;
+                                    for (const maskClass of maskClasses) {
+                                        if (ruleText.includes('.' + maskClass)) {
+                                            styleSheet.sheet.deleteRule(i);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 恢复元素的原始class和style
+                            maskClasses.forEach(maskClass => {
+                                const elements = document.querySelectorAll('.' + maskClass);
+                                const originalInfo = masksStorage[maskClass];
+                                
+                                elements.forEach(element => {
+                                    // 移除唯一class
+                                    element.classList.remove(maskClass);
+                                    
+                                    // 恢复原始class和style
+                                    if (originalInfo.classes) {
+                                        element.className = originalInfo.classes;
+                                    }
+                                    if (originalInfo.style) {
+                                        element.setAttribute('style', originalInfo.style);
+                                    }
+                                });
+                            });
+                            
+                            // 清除存储的蒙版信息
+                            localStorage.removeItem('css-analyzer-masks');
+                            
+                            showNotification('所有蒙版已恢复');
+                            
+                            // 隐藏恢复按钮
+                            restoreMaskBtn.style.display = 'none';
+                            
+                            // 重新分析CSS以更新界面
+                            setTimeout(() => {
+                                showCSSAnalyzerPanel();
+                            }, 100);
+                        }
+                    } catch (e) {
+                        console.log('恢复蒙版失败:', e);
+                        showNotification('恢复蒙版失败，请查看控制台日志');
+                    }
+                });
+                
                 // 不显示这个容器按钮（在分析界面中隐藏）
                 const hideContainerBtn = document.createElement('button');
-                hideContainerBtn.textContent = '隐藏';
+                hideContainerBtn。textContent = '隐藏';
                 hideContainerBtn.style.cssText = `
                     background: #dc3545;
                     color: white;
@@ -1442,14 +1947,15 @@
                 `;
                 hideContainerBtn.addEventListener('click', () => {
                     // 在分析界面中隐藏这个规则容器
-                    ruleContainer.style.display = 'none';
+                    ruleContainer。style。display = 'none';
                     showNotification('已在分析界面中隐藏该容器');
                 });
                 
-                actionsContainer.appendChild(toggleBtn);
+                actionsContainer。appendChild(toggleBtn);
                 actionsContainer.appendChild(locateBtn);
-                actionsContainer.appendChild(resetBtn);
-                actionsContainer.appendChild(hideContainerBtn);
+                actionsContainer.appendChild(maskBtn);
+                actionsContainer。appendChild(resetBtn);
+                actionsContainer。appendChild(hideContainerBtn);
                 selectorHeaderContainer.appendChild(selectorHeader);
                 selectorHeaderContainer.appendChild(actionsContainer);
                 ruleContainer.appendChild(selectorHeaderContainer);
@@ -1527,8 +2033,8 @@
                                         `;
                                         
                                         const ruleSelector = document.createElement('div');
-                                        ruleSelector.textContent = cssRule.selectorText;
-                                        ruleSelector.style.cssText = `
+                                        ruleSelector。textContent = cssRule.selectorText;
+                                        ruleSelector。style。cssText = `
                                             font-weight: bold;
                                             color: #007bff;
                                             margin-bottom: 5px;
@@ -1548,7 +2054,7 @@
                                             const propValue = style.getPropertyValue(propName);
                                             
                                             const propLine = document.createElement('div');
-                                            propLine.style.cssText = `
+                                            propLine。style.cssText = `
                                                 margin-bottom: 3px;
                                                 font-family: monospace;
                                             `;
@@ -1567,7 +2073,7 @@
                                 
                                 propertiesList.appendChild(styleRulesContainer);
                             } catch (error) {
-                                console.error('解析style标签内容失败:', error);
+                                console。error('解析style标签内容失败:'， error);
                                 // 如果解析失败，回退到普通显示
                                 displayNormalProperties();
                             }
@@ -1581,7 +2087,7 @@
                     }
                     
                     // 添加复制按钮
-                    const copyBtn = document.createElement('button');
+                    const copyBtn = document。createElement('button');
                     copyBtn.textContent = '复制所有属性';
                     copyBtn.style.cssText = `
                         background: #28a745;
@@ -1595,27 +2101,27 @@
                     `;
                     copyBtn.addEventListener('click', () => {
                         let cssText = '';
-                        rule.properties.forEach(prop => {
+                        rule。properties.forEach(prop => {
                             cssText += `${prop.originalName}: ${prop.value} !important;\n`;
                         });
-                        navigator.clipboard.writeText(cssText).then(() => {
+                        navigator。clipboard.writeText(cssText)。键，然后(() => {
                             showNotification('已复制所有CSS属性到剪贴板');
-                        }).catch(err => {
+                        })。catch(err => {
                             showNotification('复制失败，请手动选择复制');
                         });
                     });
-                    propertiesList.appendChild(copyBtn);
+                    propertiesList。appendChild(copyBtn);
                 }
                 
                 // 创建CSS属性分类映射
                 const cssPropertyCategories = {
                     'background': '背景',
-                    'border': '边框',
+                    'border': '边框'，
                     'margin': '外边距',
                     'padding': '内边距',
                     'position': '定位',
                     'display': '显示',
-                    'font': '字体',
+                    'font': '字体'，
                     'text': '文本',
                     'list': '列表',
                     '其他': '其他'
@@ -1721,9 +2227,12 @@
 
                             const propName = document.createElement('div');
                             propName.style.cssText = `
-                                flex: 1;
+                                flex: 1 1 0%;
                                 font-weight: 500;
                                 color: #495057;
+                                white-space: nowrap;
+                                overflow: hidden;
+                                text-overflow: ellipsis;
                             `;
                             propName.innerHTML = `<span style="color: #007bff;">${prop.chineseName}</span>: ${prop.parsedValue}`;
 
@@ -1740,6 +2249,132 @@
                                 font-size: 12px;
                                 margin-left: 10px;
                             `;
+                            
+                            // 为背景图链接添加长按预览功能
+                            if ((prop.originalName.includes('background-image') || 
+                                 prop.originalName.includes('background')) && 
+                                prop.value.includes('url(')) {
+                                let pressTimer;
+                                
+                                propName.addEventListener('mousedown', function() {
+                                    pressTimer = setTimeout(function() {
+                                        // 提取URL
+                                        const urlMatch = prop.value.match(/url\(['"]?(.*?)['"]?\)/);
+                                        if (urlMatch && urlMatch[1]) {
+                                            const imageUrl = urlMatch[1];
+                                            // 创建预览弹窗
+                                            const previewModal = document.createElement('div');
+                                            previewModal.style.cssText = `
+                                                position: fixed;
+                                                top: 50%;
+                                                left: 50%;
+                                                transform: translate(-50%, -50%);
+                                                background: white;
+                                                padding: 20px;
+                                                border-radius: 8px;
+                                                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                                                z-index: 9999;
+                                                max-width: 90vw;
+                                                max-height: 90vh;
+                                                display: flex;
+                                                flex-direction: column;
+                                                align-items: center;
+                                            `;
+                                             
+                                            const overlay = document.createElement('div');
+                                            overlay.style.cssText = `
+                                                position: fixed;
+                                                top: 0;
+                                                left: 0;
+                                                right: 0;
+                                                bottom: 0;
+                                                background: rgba(0,0,0,0.5);
+                                                z-index: 9998;
+                                            `;
+                                             
+                                            const closeBtn = document.createElement('button');
+                                            closeBtn.textContent = '关闭';
+                                            closeBtn.style.cssText = `
+                                                position: absolute;
+                                                top: 10px;
+                                                right: 10px;
+                                                background: #dc3545;
+                                                color: white;
+                                                border: none;
+                                                border-radius: 4px;
+                                                padding: 5px 10px;
+                                                cursor: pointer;
+                                                font-size: 12px;
+                                            `;
+                                            closeBtn.addEventListener('click', function() {
+                                                try {
+                                                    document.body.removeChild(previewModal);
+                                                    document.body.removeChild(overlay);
+                                                } catch (e) {
+                                                    console.log('已移除预览元素');
+                                                }
+                                            });
+                                             
+                                            const imgContainer = document.createElement('div');
+                                            imgContainer.style.cssText = `
+                                                max-width: 100%;
+                                                max-height: 70vh;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                margin: 10px 0;
+                                            `;
+                                             
+                                            const img = document.createElement('img');
+                                            img.src = imageUrl;
+                                            img.alt = '背景图预览';
+                                            img.style.cssText = `
+                                                max-width: 50vw;
+                                                max-height: 50vh;
+                                                object-fit: contain;
+                                                max-width: 50%;
+                                                max-height: 50%;
+                                            `;
+                                             
+                                            const urlDisplay = document.createElement('div');
+                                            urlDisplay.style.cssText = `
+                                                font-size: 12px;
+                                                color: #666;
+                                                word-break: break-all;
+                                                max-width: 100%;
+                                                margin-top: 10px;
+                                            `;
+                                            urlDisplay.textContent = imageUrl;
+                                             
+                                            overlay.addEventListener('click', function() {
+                                                try {
+                                                    document.body.removeChild(previewModal);
+                                                    document.body.removeChild(overlay);
+                                                } catch (e) {
+                                                    console.log('已移除预览元素');
+                                                }
+                                            });
+                                             
+                                            imgContainer.appendChild(img);
+                                            previewModal.appendChild(closeBtn);
+                                            previewModal.appendChild(imgContainer);
+                                            previewModal.appendChild(urlDisplay);
+                                             
+                                            document.body.appendChild(overlay);
+                                            document.body.appendChild(previewModal);
+                                        }
+                                    }, 800); // 800毫秒长按触发
+                                });
+                                
+                                propName.addEventListener('mouseup', function() {
+                                    clearTimeout(pressTimer);
+                                });
+                                
+                                propName.addEventListener('mouseleave', function() {
+                                    clearTimeout(pressTimer);
+                                });
+                            }
+                            
                             propInput.addEventListener('change', function() {
                                 applyCSSChange(this.dataset.selector, this.dataset.originalName, this.value);
                             });
@@ -1879,11 +2514,13 @@
                     border: 1px solid #ddd;
                     border-radius: 8px;
                     padding: 20px;
-                    max-width: 500px;
-                    max-height: 80vh;
+                    width: 90%;
+                    max-width: 700px;
+                    max-height: 85vh;
                     overflow-y: auto;
                     z-index: 10001;
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    font-size: 14px;
                 `;
 
                 // 创建标题
@@ -1900,25 +2537,42 @@
                 const tutorialContent = document.createElement('div');
                 tutorialContent.style.cssText = `
                     margin-bottom: 20px;
-                    line-height: 1.6;
+                    line-height: 1.8;
                 `;
                 tutorialContent.innerHTML = `
-                    <p style="margin-bottom: 10px;"><strong>功能介绍：</strong></p>
+                    <p style="margin-bottom: 10px;"><strong>界面功能详解：</strong></p>
+                    <ul style="margin-bottom: 15px; padding-left: 20px;">
+                        <li style="margin-bottom: 8px;"><strong>刷新按钮：</strong>重新加载并分析当前页面的CSS规则，更新所有选择器和属性信息</li>
+                        <li style="margin-bottom: 8px;"><strong>标准/高级模式：</strong>切换不同的CSS分析和显示模式，高级模式提供更详细的CSS分析但可能影响性能</li>
+                        <li style="margin-bottom: 8px;"><strong>手动选择元素：</strong>点击后进入选择模式，可直接在页面上点击选择需要分析的元素</li>
+                        <li style="margin-bottom: 8px;"><strong>搜索框：</strong>输入关键词快速查找包含特定选择器的CSS规则</li>
+                        <li style="margin-bottom: 8px;"><strong>定位按钮：</strong>点击后在页面上高亮显示对应选择器的所有元素，帮助确认选择器匹配情况</li>
+                        <li style="margin-bottom: 8px;"><strong>折叠/展开：</strong>可单独折叠或展开单个选择器的属性列表，也可批量操作全部展开/折叠</li>
+                        <li style="margin-bottom: 8px;"><strong>蒙版按钮：</strong>为选择器创建唯一class图层，避免全局污染问题</li>
+                        <li style="margin-bottom: 8px;"><strong>重置按钮：</strong>清空搜索框内容，恢复显示所有CSS规则</li>
+                        <li style="margin-bottom: 8px;"><strong>恢复蒙版按钮：</strong>恢复已创建的蒙版样式，使其再次生效</li>
+                        <li style="margin-bottom: 8px;"><strong>显示被隐藏的容器：</strong>查看被隐藏的CSS规则容器</li>
+                    </ul>
+                    
+                    <p style="margin-bottom: 10px;"><strong>新人操作教程 (5步快速上手)：</strong></p>
                     <ol style="margin-bottom: 15px; padding-left: 20px;">
-                        <li style="margin-bottom: 8px;"><strong>刷新按钮：</strong>重新分析页面CSS</li>
-                        <li style="margin-bottom: 8px;"><strong>标准/高级模式：</strong>切换分析模式</li>
-                        <li style="margin-bottom: 8px;"><strong>手动选择元素：</strong>点击页面上的元素进行分析</li>
-                        <li style="margin-bottom: 8px;"><strong>搜索框：</strong>搜索特定选择器</li>
-                        <li style="margin-bottom: 8px;"><strong>定位按钮：</strong>高亮显示对应元素</li>
-                        <li style="margin-bottom: 8px;"><strong>折叠/展开：</strong>查看/隐藏CSS属性详情</li>
+                        <li style="margin-bottom: 8px;"><strong>选择元素</strong>：点击右上角的「手动选择元素」按钮，然后在页面上点击您想更改的状态栏或其他元素</li>
+                        <li style="margin-bottom: 8px;"><strong>定位验证</strong>：点击选择器旁边的「定位」按钮，可以验证该选择器是否正确匹配了您想更改的元素（此步骤可忽略）</li>
+                        <li style="margin-bottom: 8px;"><strong>修改属性</strong>：展开选择器下方的属性列表，可以直接修改对应的属性值，修改后会实时生效</li>
+                        <li style="margin-bottom: 8px;"><strong>重置处理</strong>：如果修改出现全局污染问题，请先点击对应选择器的「重置」按钮，等待网页刷新后，直接跳到第5步</li>
+                        <li style="margin-bottom: 8px;"><strong>创建蒙版与刷新</strong>：点击对应选择器的「蒙版」按钮，它会创建一个唯一class图层避免全局污染，创建成功后点击右上角「刷新」按钮，新图层的选择器就会更新出来，此时再回到第3步继续修改即可</li>
                     </ol>
+                    
                     <p style="margin-bottom: 10px;"><strong>使用提示：</strong></p>
                     <ul style="padding-left: 20px;">
-                        <li style="margin-bottom: 8px;">点击元素的"定位"按钮可以在页面中高亮显示该元素</li>
-                        <li style="margin-bottom: 8px;">可以直接修改CSS属性值并实时应用到页面</li>
+                        <li style="margin-bottom: 8px;">定位功能使用黄色高亮显示匹配元素，可帮助确认选择器是否正确</li>
+                        <li style="margin-bottom: 8px;">修改属性后会实时显示效果，所有修改会自动保存到本地存储</li>
+                        <li style="margin-bottom: 8px;">网页刷新后，所有修改仍然有效，无需重新配置</li>
+                        <li style="margin-bottom: 8px;">蒙版功能是防止样式全局污染的重要工具，特别是在修改基础元素（如div）时</li>
+                        <li style="margin-bottom: 8px;">背景图片等特殊属性支持完整保留，不会出现链接改变或样式丢失问题</li>
                         <li style="margin-bottom: 8px;">标准模式下只会分析特定容器内的元素，提高性能</li>
-                        <li style="margin-bottom: 8px;">高级模式下，会显示整个网页的所有的css，对于设备不好的情况下，不建议使用</li>
-                        <li style="margin-bottom: 8px;">重点：数据默认是自动保存的，点击选择器重置按钮，才会重置数据，需要注意，点击重置按钮会刷新一次网页！！！</li>
+                        <li style="margin-bottom: 8px;">高级模式下，会显示整个网页的所有CSS，对于设备不好的情况下，不建议使用</li>
+                        <li style="margin-bottom: 8px;"><strong>重点：</strong>数据默认是自动保存的，点击选择器重置按钮，才会重置数据，需要注意，点击重置按钮会刷新一次网页！</li>
                     </ul>
                 `;
 
@@ -2043,6 +2697,12 @@
         });
     }
 
+    // 为带有内联style属性但没有class的元素添加唯一class的映射存储
+    let styledElementsMap = JSON.parse(localStorage.getItem('css-analyzer-styled-elements') || '{}');
+
+    // 存储原始标签选择器，避免重复应用
+    let originalSelectorsMap = {};
+
     // 应用CSS更改
     function applyCSSChange(selector, property, value) {
         // 查找已有的样式表或创建新的
@@ -2053,6 +2713,39 @@
             document.head.appendChild(styleSheet);
         }
 
+        // 检查是否是简单的标签选择器（如div）并且没有class或id
+        let finalSelector = selector;
+        let isOriginalTagSelector = false;
+        
+        // 检查是否是原始标签选择器
+        if (/^[a-zA-Z0-9]+$/.test(selector) && !selector.includes('.') && !selector.includes('#')) {
+            isOriginalTagSelector = true;
+            
+            // 检查是否已经为此选择器创建过映射
+            const mappedClass = Object.keys(styledElementsMap).find(key => styledElementsMap[key] === selector);
+            
+            if (mappedClass) {
+                // 已经有映射，使用映射的class选择器
+                finalSelector = `.${mappedClass}`;
+            } else {
+                // 创建新的唯一class
+                const newMappedClass = `css-analyzer-${selector}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                styledElementsMap[newMappedClass] = selector;
+                localStorage.setItem('css-analyzer-styled-elements', JSON.stringify(styledElementsMap));
+                
+                // 为符合条件的元素添加class
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => {
+                    // 只处理没有class但有内联style的元素
+                    if (!element.className && element.hasAttribute('style')) {
+                        element.classList.add(newMappedClass);
+                    }
+                });
+                
+                finalSelector = `.${newMappedClass}`;
+            }
+        }
+
         // 获取现有规则
         const existingRules = styleSheet.sheet.cssRules;
         let found = false;
@@ -2060,7 +2753,7 @@
         // 检查是否已有针对该选择器的规则
         for (let i = 0; i < existingRules.length; i++) {
             const rule = existingRules[i];
-            if (rule.type === CSSRule.STYLE_RULE && rule.selectorText === selector) {
+            if (rule.type === CSSRule.STYLE_RULE && rule.selectorText === finalSelector) {
                 // 更新现有规则
                 rule.style.setProperty(property, value);
                 found = true;
@@ -2070,11 +2763,12 @@
 
         // 如果没有找到规则，创建新的
         if (!found) {
-            styleSheet.sheet.insertRule(`${selector} { ${property}: ${value} !important; }`, existingRules.length);
+            // 确保使用的是class选择器而不是原始标签选择器
+            styleSheet.sheet.insertRule(`${finalSelector} { ${property}: ${value} !important; }`, existingRules.length);
         }
 
         // 保存到本地存储
-        saveCSSChanges(selector, property, value);
+        saveCSSChanges(finalSelector, property, value);
 
         // 显示应用成功的提示
         showNotification('CSS属性已更新并保存');
@@ -2172,13 +2866,13 @@
         `;
         document.head.appendChild(style);
 
-        document.body.appendChild(notification);
+        document。body。appendChild(notification);
 
         // 2秒后移除通知
         setTimeout(() => {
-            notification.remove();
-            style.remove();
-        }, 2000);
+            notification。remove();
+            style。remove();
+        }， 2000);
     }
 
     /* ========= 注意：CSS属性分析器已完全绑定到猫猫岛智能工具箱 ========= */
@@ -2187,34 +2881,34 @@
     /* ========================================================== */
     
     // 添加调试信息
-    console.log('CSS属性分析器脚本加载成功，已完全绑定到工具箱，准备暴露全局对象');
+    console。log('CSS属性分析器脚本加载成功，已完全绑定到工具箱，准备暴露全局对象');
     
     // 确保在window对象上创建cssPropertyAnalyzer
     try {
         // 暴露全局对象，以便其他脚本可以调用CSS属性分析器的功能
-        window.cssPropertyAnalyzer = window.cssPropertyAnalyzer || {
+        window。cssPropertyAnalyzer = window。cssPropertyAnalyzer || {
             initialize: function() {
-                console.log('CSS属性分析器：initialize方法被调用');
+                console。log('CSS属性分析器：initialize方法被调用');
                 const analyzedRules = findContentLeftCSS();
                 createUI(analyzedRules);
                 // 加载保存的CSS更改
                 loadCSSChanges();
                 return true;
-            },
-            findContentLeftCSS: findContentLeftCSS,
-            createUI: createUI,
+            }，
+            findContentLeftCSS: findContentLeftCSS，
+            createUI: createUI，
             loadCSSChanges: loadCSSChanges,
-            toggleDarkMode: toggleDarkMode,
+            toggleDarkMode: toggleDarkMode，
             applySavedTheme: applySavedTheme
         };
         
         // 额外添加到unsafeWindow，确保在不同的油猴环境中都能访问
         if (typeof unsafeWindow !== 'undefined') {
-            unsafeWindow.cssPropertyAnalyzer = window.cssPropertyAnalyzer;
+            unsafeWindow。cssPropertyAnalyzer = window。cssPropertyAnalyzer;
         }
         
-        console.log('CSS属性分析器：全局对象暴露成功');
+        console。log('CSS属性分析器：全局对象暴露成功');
     } catch (error) {
-        console.error('CSS属性分析器：全局对象暴露失败:', error);
+        console。error('CSS属性分析器：全局对象暴露失败:'， error);
     }
 })();
